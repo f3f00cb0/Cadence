@@ -28,7 +28,7 @@ services:
       APP_DEBUG: "0"
       APP_SECRET: ${APP_SECRET}
       DATABASE_URL: ${DATABASE_URL}
-      MESSENGER_TRANSPORT_DSN: doctrine://default?auto_setup=0
+      MESSENGER_TRANSPORT_DSN: doctrine://default?auto_setup=1
       STAS_GTFS_URL: ${STAS_GTFS_URL}
       VELIVERT_GBFS_URL: ${VELIVERT_GBFS_URL}
     depends_on:
@@ -65,7 +65,7 @@ services:
       APP_DEBUG: "0"
       APP_SECRET: ${APP_SECRET}
       DATABASE_URL: ${DATABASE_URL}
-      MESSENGER_TRANSPORT_DSN: doctrine://default?auto_setup=0
+      MESSENGER_TRANSPORT_DSN: doctrine://default?auto_setup=1
       STAS_GTFS_URL: ${STAS_GTFS_URL}
       VELIVERT_GBFS_URL: ${VELIVERT_GBFS_URL}
     depends_on:
