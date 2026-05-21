@@ -1,0 +1,20 @@
+parameters:
+    stas.gtfs_url: '%env(STAS_GTFS_URL)%'
+    stas.gtfs_rt_url: '%env(STAS_GTFS_RT_URL)%'
+    velivert.gbfs_url: '%env(VELIVERT_GBFS_URL)%'
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+        bind:
+            string $gbfsUrl: '%velivert.gbfs_url%'
+            string $gtfsUrl: '%stas.gtfs_url%'
+            string $gtfsRtUrl: '%stas.gtfs_rt_url%'
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'

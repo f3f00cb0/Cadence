@@ -1,0 +1,99 @@
+# Production compose, consumed by Dokploy.
+# Le `docker-compose.yml` (sans suffix) reste dédié au dev local — ne pas le mélanger.
+#
+# Image GHCR : ghcr.io/f3f00cb0/cadence — poussée par `.github/workflows/deploy.yml`.
+# La var $IMAGE_TAG (défaut: latest) permet le rollback : il suffit de la fixer à
+# `sha-XXXXXXX` dans l'env Dokploy pour repointer sur une image plus ancienne du GHCR.
+
+services:
+  database:
+    image: postgis/postgis:16-3.4-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  php:
+    image: ghcr.io/f3f00cb0/cadence:${IMAGE_TAG:-latest}
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: "0"
+      APP_SECRET: ${APP_SECRET}
+      DATABASE_URL: ${DATABASE_URL}
+      MESSENGER_TRANSPORT_DSN: doctrine://default?auto_setup=0
+      STAS_GTFS_URL: ${STAS_GTFS_URL}
+      VELIVERT_GBFS_URL: ${VELIVERT_GBFS_URL}
+    depends_on:
+      database:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+    labels:
+      # Dokploy / Traefik prend le relais pour TLS, host routing, etc.
+      # Le reste (Host rule, certresolver, port) est configuré dans l'UI Dokploy.
+      traefik.enable: "true"
+    restart: unless-stopped
+
+  worker:
+    image: ghcr.io/f3f00cb0/cadence:${IMAGE_TAG:-latest}
+    command:
+      - php
+      - bin/console
+      - messenger:consume
+      - scheduler_main
+      - async
+      - -vv
+      - --time-limit=3600
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: "0"
+      APP_SECRET: ${APP_SECRET}
+      DATABASE_URL: ${DATABASE_URL}
+      MESSENGER_TRANSPORT_DSN: doctrine://default?auto_setup=0
+      STAS_GTFS_URL: ${STAS_GTFS_URL}
+      VELIVERT_GBFS_URL: ${VELIVERT_GBFS_URL}
+    depends_on:
+      database:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  migrations:
+    image: ghcr.io/f3f00cb0/cadence:${IMAGE_TAG:-latest}
+    restart: "no"
+    environment:
+      APP_ENV: prod
+      APP_DEBUG: "0"
+      APP_SECRET: ${APP_SECRET}
+      DATABASE_URL: ${DATABASE_URL}
+      STAS_GTFS_URL: ${STAS_GTFS_URL}
+      VELIVERT_GBFS_URL: ${VELIVERT_GBFS_URL}
+    depends_on:
+      database:
+        condition: service_healthy
+    command:
+      - sh
+      - -c
+      - |
+        bin/console doctrine:migrations:migrate -n --no-debug \
+          && (bin/console app:gtfs:import || echo 'GTFS import failed, retry manually')
+
+volumes:
+  db_data:

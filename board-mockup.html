@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="theme-color" content="#08090b">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Mobilité Stéphanoise — Board</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400;9..144,500;9..144,600;9..144,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+    /* ============================================================
+       Mobilité Stéphanoise — Mode Board (mobile dashboard)
+       Identité visuelle : Saint-Étienne
+       Palette : carbone + vert ASSE + cuivre + paper white
+       ============================================================ */
+
+    :root {
+        /* surfaces */
+        --bg:           #08090b;
+        --bg-elev:      #11131a;
+        --bg-elev-2:    #181b22;
+        --bg-elev-3:    #20242c;
+        --bg-card-hi:   #1c2027;
+        --rule:         #262b34;
+        --rule-soft:    #1c2028;
+
+        /* ink */
+        --ink:          #f2efe8;
+        --ink-bright:   #ffffff;
+        --ink-dim:      #93897c;
+        --ink-faint:    #5e574e;
+
+        /* identity */
+        --asse:         #00733f;          /* ASSE forest green */
+        --asse-bright:  #14a05e;          /* hover / active */
+        --asse-glow:    rgba(20, 160, 94, .14);
+        --copper:       #c98a3e;          /* industrial accent — rare */
+        --copper-dim:   #7a5424;
+
+        /* transit type codes (officiels STAS) */
+        --tram:         #e0221b;          /* T1, T2, T3 */
+        --bus:          #f5b400;          /* bus M1-M12 + lignes régulières */
+        --bus-ink:      #1a1408;
+        --velivert:     #b8d840;          /* chartreuse vélivert */
+        --velivert-ink: #1a1f08;
+
+        /* signal */
+        --danger:       #ff4a3d;
+        --warn:         #f5b400;
+
+        /* type */
+        --display:      'Fraunces', 'Iowan Old Style', Georgia, serif;
+        --sans:         'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        --mono:         'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+        /* motion */
+        --ease-out:     cubic-bezier(.16, 1, .3, 1);
+        --ease-in-out:  cubic-bezier(.65, 0, .35, 1);
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+        margin: 0; padding: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--sans);
+        font-size: 15px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+        overscroll-behavior-y: contain;
+    }
+
+    body {
+        max-width: 480px;
+        margin: 0 auto;
+        min-height: 100vh;
+        background-image:
+            radial-gradient(circle at 90% -10%, var(--asse-glow), transparent 45%),
+            radial-gradient(circle at -10% 60%, rgba(201, 138, 62, .04), transparent 50%);
+    }
+
+    /* ============================================================
+       Header — sticky identity + clock + meta
+       ============================================================ */
+    .head {
+        position: sticky; top: 0; z-index: 30;
+        background: linear-gradient(180deg, var(--bg) 60%, transparent);
+        padding: 20px 20px 14px;
+    }
+
+    .head::after {
+        content: ''; display: block; height: 1px;
+        background: linear-gradient(90deg, transparent, var(--rule) 20%, var(--rule) 80%, transparent);
+        margin-top: 14px;
+    }
+
+    .head__brand {
+        display: flex; align-items: baseline; justify-content: space-between;
+        margin-bottom: 14px;
+    }
+
+    .head__mark {
+        font-family: var(--mono);
+        font-size: 9.5px;
+        letter-spacing: 0.22em;
+        color: var(--ink-dim);
+        text-transform: uppercase;
+        font-weight: 500;
+    }
+
+    .head__mark strong {
+        color: var(--asse-bright);
+        font-weight: 600;
+    }
+
+    .head__pulse {
+        display: inline-block;
+        width: 6px; height: 6px;
+        background: var(--asse-bright);
+        border-radius: 50%;
+        margin-right: 6px;
+        vertical-align: 1px;
+        animation: pulse 2s var(--ease-in-out) infinite;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--asse-glow); }
+        50%      { opacity: .55; box-shadow: 0 0 0 4px transparent; }
+    }
+
+    .head__row {
+        display: flex; align-items: flex-end; justify-content: space-between;
+        gap: 12px;
+    }
+
+    .head__clock {
+        font-family: var(--mono);
+        font-size: 38px;
+        font-weight: 500;
+        color: var(--ink);
+        line-height: 1;
+        letter-spacing: -0.02em;
+        font-feature-settings: 'tnum' 1, 'zero' 1;
+    }
+
+    .head__clock-sec {
+        color: var(--ink-dim);
+        font-size: 28px;
+    }
+
+    .head__date {
+        display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+        padding-bottom: 4px;
+    }
+
+    .head__date-day {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.2em;
+        color: var(--ink-dim);
+        text-transform: uppercase;
+    }
+
+    .head__sync {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: 0.06em;
+        color: var(--asse-bright);
+    }
+
+    /* ============================================================
+       Search — sleek bar with quick suggestions
+       ============================================================ */
+    .search {
+        margin: 0 20px 8px;
+        position: relative;
+    }
+
+    .search__wrap {
+        position: relative;
+        background: var(--bg-elev);
+        border: 1px solid var(--rule);
+        border-radius: 14px;
+        transition: border-color .2s var(--ease-out), background .2s var(--ease-out);
+    }
+
+    .search__wrap:focus-within {
+        border-color: var(--asse);
+        background: var(--bg-elev-2);
+    }
+
+    .search__icon {
+        position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+        width: 18px; height: 18px;
+        color: var(--ink-dim);
+        pointer-events: none;
+    }
+
+    .search__wrap:focus-within .search__icon { color: var(--asse-bright); }
+
+    .search__input {
+        width: 100%;
+        background: transparent;
+        border: none;
+        color: var(--ink);
+        font-family: var(--sans);
+        font-size: 16px;
+        padding: 14px 44px 14px 44px;
+        outline: none;
+    }
+
+    .search__input::placeholder {
+        color: var(--ink-faint);
+    }
+
+    .search__clear {
+        position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+        width: 24px; height: 24px;
+        border-radius: 50%;
+        background: var(--bg-elev-3);
+        color: var(--ink-dim);
+        border: none;
+        cursor: pointer;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        padding: 0;
+    }
+
+    .search__wrap[data-has-value="true"] .search__clear { display: flex; }
+
+    /* Recent / suggestion chips below the search */
+    .chips {
+        display: flex; gap: 8px;
+        padding: 12px 20px 6px;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .chips::-webkit-scrollbar { display: none; }
+
+    .chip {
+        flex-shrink: 0;
+        background: var(--bg-elev);
+        border: 1px solid var(--rule);
+        color: var(--ink-dim);
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        padding: 7px 12px;
+        border-radius: 100px;
+        cursor: pointer;
+        transition: all .15s var(--ease-out);
+        display: flex; align-items: center; gap: 6px;
+    }
+
+    .chip:hover, .chip:active {
+        border-color: var(--asse);
+        color: var(--ink);
+    }
+
+    .chip__star {
+        color: var(--copper);
+        font-size: 10px;
+    }
+
+    /* ============================================================
+       Section headers
+       ============================================================ */
+    .section {
+        padding: 20px 20px 0;
+    }
+
+    .section + .section { padding-top: 24px; }
+
+    .section__head {
+        display: flex; align-items: baseline; justify-content: space-between;
+        margin-bottom: 14px;
+    }
+
+    .section__title {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        font-weight: 600;
+        letter-spacing: 0.24em;
+        color: var(--ink);
+        text-transform: uppercase;
+        display: flex; align-items: center; gap: 8px;
+    }
+
+    .section__title-bar {
+        width: 14px; height: 1px;
+        background: var(--asse-bright);
+    }
+
+    .section__meta {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        letter-spacing: 0.08em;
+        color: var(--ink-dim);
+    }
+
+    .section__meta-pin {
+        color: var(--asse-bright);
+    }
+
+    /* ============================================================
+       Stop cards — the hero pattern
+       ============================================================ */
+    .cards {
+        display: flex; flex-direction: column;
+        gap: 12px;
+    }
+
+    .card {
+        background: var(--bg-elev);
+        border: 1px solid var(--rule);
+        border-radius: 18px;
+        overflow: hidden;
+        transition: transform .2s var(--ease-out), border-color .2s var(--ease-out);
+        cursor: pointer;
+        position: relative;
+    }
+
+    .card:active {
+        transform: scale(.99);
+        border-color: var(--asse);
+    }
+
+    .card__top {
+        padding: 18px 18px 14px;
+        display: flex; align-items: flex-start; justify-content: space-between;
+        gap: 12px;
+    }
+
+    .card__name {
+        font-family: var(--display);
+        font-size: 24px;
+        font-weight: 600;
+        line-height: 1.05;
+        margin: 0 0 4px;
+        letter-spacing: -0.01em;
+        color: var(--ink);
+        font-variation-settings: "opsz" 120, "SOFT" 30;
+    }
+
+    .card__name em {
+        font-style: italic;
+        font-weight: 500;
+        color: var(--ink-dim);
+    }
+
+    .card__sub {
+        display: flex; align-items: center; gap: 10px;
+        font-family: var(--mono);
+        font-size: 11px;
+        color: var(--ink-dim);
+        letter-spacing: 0.04em;
+    }
+
+    .card__sub-sep {
+        width: 2px; height: 2px;
+        background: var(--ink-faint);
+        border-radius: 50%;
+    }
+
+    .card__fav {
+        background: transparent;
+        border: none;
+        color: var(--ink-faint);
+        cursor: pointer;
+        padding: 4px;
+        font-size: 18px;
+        line-height: 1;
+        transition: color .15s var(--ease-out), transform .15s var(--ease-out);
+    }
+
+    .card__fav:active { transform: scale(.85); }
+    .card__fav[data-fav="true"] { color: var(--copper); }
+
+    .card__departures {
+        padding: 4px 14px 16px;
+    }
+
+    .dep {
+        display: grid;
+        grid-template-columns: 38px 1fr auto;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 4px;
+        border-top: 1px dashed var(--rule-soft);
+    }
+
+    .dep:first-child { border-top: none; }
+
+    .dep__route {
+        height: 28px;
+        min-width: 38px;
+        padding: 0 8px;
+        border-radius: 7px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--mono);
+        font-weight: 700;
+        font-size: 12px;
+        letter-spacing: 0.02em;
+        background: var(--bus);
+        color: var(--bus-ink);
+    }
+
+    .dep__route[data-type="tram"] { background: var(--tram); color: #fff; }
+    .dep__route[data-type="bus"]  { background: var(--bus);  color: var(--bus-ink); }
+
+    .dep__sign {
+        font-family: var(--sans);
+        font-size: 14px;
+        color: var(--ink);
+        font-weight: 500;
+        line-height: 1.25;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+    }
+
+    .dep__sign-time {
+        display: block;
+        font-family: var(--mono);
+        font-size: 10.5px;
+        font-weight: 400;
+        color: var(--ink-faint);
+        letter-spacing: 0.04em;
+        margin-top: 1px;
+    }
+
+    .dep__eta {
+        font-family: var(--mono);
+        font-size: 20px;
+        font-weight: 500;
+        line-height: 1;
+        color: var(--ink);
+        text-align: right;
+        font-feature-settings: 'tnum' 1;
+        letter-spacing: -0.01em;
+    }
+
+    .dep__eta-unit {
+        font-size: 11px;
+        color: var(--ink-dim);
+        margin-left: 1px;
+        font-weight: 400;
+    }
+
+    .dep__eta[data-soon="true"] {
+        color: var(--asse-bright);
+        animation: blink-soft 1.6s var(--ease-in-out) infinite;
+    }
+
+    .dep__eta[data-now="true"] {
+        color: var(--asse-bright);
+        font-size: 15px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-weight: 600;
+    }
+
+    @keyframes blink-soft {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.55; }
+    }
+
+    /* Empty state inside card — proper inline message instead of broken word-wrap */
+    .dep--empty {
+        grid-template-columns: 1fr;
+        padding: 22px 4px;
+        text-align: center;
+    }
+
+    .dep--empty .dep__msg {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.04em;
+        color: var(--ink-faint);
+        font-style: italic;
+    }
+
+    /* ============================================================
+       Vélivert section — denser, horizontal flow
+       ============================================================ */
+    .velo-card {
+        background: var(--bg-elev);
+        border: 1px solid var(--rule);
+        border-radius: 18px;
+        padding: 16px 18px;
+        display: flex; flex-direction: column; gap: 14px;
+    }
+
+    .velo-row {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 14px;
+        align-items: center;
+    }
+
+    .velo-row__info {
+        display: flex; flex-direction: column; gap: 4px;
+        min-width: 0;
+    }
+
+    .velo-row__name {
+        font-family: var(--display);
+        font-size: 16px;
+        font-weight: 500;
+        color: var(--ink);
+        line-height: 1.1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .velo-row__meta {
+        font-family: var(--mono);
+        font-size: 10.5px;
+        color: var(--ink-dim);
+        letter-spacing: 0.04em;
+    }
+
+    .velo-row__stat {
+        display: flex; align-items: center; gap: 10px;
+    }
+
+    .velo-row__count {
+        font-family: var(--mono);
+        font-size: 18px;
+        font-weight: 500;
+        color: var(--velivert);
+        line-height: 1;
+        font-feature-settings: 'tnum' 1;
+        min-width: 36px;
+        text-align: right;
+    }
+
+    .velo-row__count[data-empty="true"]   { color: var(--danger); }
+    .velo-row__count[data-warn="true"]    { color: var(--copper); }
+
+    .velo-row__bar {
+        width: 56px; height: 6px;
+        background: var(--bg-elev-3);
+        border-radius: 100px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .velo-row__fill {
+        position: absolute; inset: 0 auto 0 0;
+        background: var(--velivert);
+        border-radius: 100px;
+        transition: width .3s var(--ease-out);
+    }
+
+    .velo-row__fill[data-empty="true"] { background: var(--danger); }
+    .velo-row__fill[data-warn="true"]  { background: var(--copper); }
+
+    .velo-row + .velo-row {
+        border-top: 1px dashed var(--rule-soft);
+        padding-top: 14px;
+    }
+
+    /* ============================================================
+       Empty state for "favoris" section
+       ============================================================ */
+    .empty {
+        background: var(--bg-elev);
+        border: 1px dashed var(--rule);
+        border-radius: 18px;
+        padding: 28px 22px;
+        text-align: center;
+    }
+
+    .empty__title {
+        font-family: var(--display);
+        font-size: 18px;
+        font-style: italic;
+        color: var(--ink-dim);
+        margin: 0 0 6px;
+        font-weight: 400;
+    }
+
+    .empty__sub {
+        font-family: var(--sans);
+        font-size: 13px;
+        color: var(--ink-faint);
+        line-height: 1.5;
+    }
+
+    .empty__kbd {
+        display: inline-block;
+        background: var(--bg-elev-2);
+        color: var(--copper);
+        padding: 2px 8px;
+        border-radius: 4px;
+        font-family: var(--mono);
+        font-size: 11px;
+        margin: 0 2px;
+    }
+
+    /* ============================================================
+       Footer with copyright + map link
+       ============================================================ */
+    .foot {
+        padding: 32px 20px 80px;
+        text-align: center;
+        font-family: var(--mono);
+        font-size: 9.5px;
+        letter-spacing: 0.16em;
+        color: var(--ink-faint);
+        text-transform: uppercase;
+        line-height: 1.8;
+    }
+
+    .foot__link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--asse-bright);
+        text-decoration: none;
+        margin-bottom: 16px;
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        padding: 10px 18px;
+        background: var(--bg-elev);
+        border: 1px solid var(--rule);
+        border-radius: 10px;
+        text-transform: uppercase;
+        font-weight: 500;
+    }
+
+    .foot__link:active { transform: scale(.98); }
+
+    .foot__creds {
+        margin-top: 18px;
+        display: block;
+    }
+
+    .foot__sep {
+        color: var(--ink-faint);
+        margin: 0 6px;
+    }
+
+    /* ============================================================
+       Sheet (modal détail arrêt) — visible in this demo at bottom
+       ============================================================ */
+
+    /* ============================================================
+       Reduced motion respect
+       ============================================================ */
+    @media (prefers-reduced-motion: reduce) {
+        *, *::before, *::after {
+            animation-duration: 0s !important;
+            transition-duration: 0s !important;
+        }
+    }
+
+    /* ============================================================
+       Slim scrollbar for desktop preview
+       ============================================================ */
+    body::-webkit-scrollbar { width: 6px; }
+    body::-webkit-scrollbar-track { background: transparent; }
+    body::-webkit-scrollbar-thumb { background: var(--bg-elev-3); border-radius: 100px; }
+    </style>
+</head>
+<body>
+
+<!-- ===========================================================
+     HEADER — identité + horloge + recherche
+     =========================================================== -->
+<header class="head">
+    <div class="head__brand">
+        <span class="head__mark">
+            <span class="head__pulse"></span><strong>SAINT-ÉTIENNE</strong> · 45.44°N · 4.39°E
+        </span>
+        <span class="head__mark">DEPUIS 1881</span>
+    </div>
+
+    <div class="head__row">
+        <span class="head__clock" id="clock">21:14<span class="head__clock-sec">:07</span></span>
+        <div class="head__date">
+            <span class="head__date-day">MER · 20 MAI</span>
+            <span class="head__sync">✓ TEMPS RÉEL</span>
+        </div>
+    </div>
+</header>
+
+<!-- ===========================================================
+     SEARCH BAR
+     =========================================================== -->
+<div class="search">
+    <div class="search__wrap" data-has-value="false">
+        <svg class="search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="7"></circle>
+            <path d="m21 21-4.3-4.3"></path>
+        </svg>
+        <input class="search__input" type="search" placeholder="Châteaucreux, Hôtel de Ville, Bellevue…" autocomplete="off">
+        <button class="search__clear" aria-label="Effacer">✕</button>
+    </div>
+</div>
+
+<!-- Suggestions / favoris rapides scrollables -->
+<div class="chips">
+    <button class="chip"><span class="chip__star">★</span>CHÂTEAUCREUX</button>
+    <button class="chip"><span class="chip__star">★</span>JEAN JAURÈS</button>
+    <button class="chip"><span class="chip__star">★</span>HÔTEL DE VILLE</button>
+    <button class="chip">CARNOT</button>
+    <button class="chip">FAURIEL</button>
+</div>
+
+<!-- ===========================================================
+     SECTION — À proximité (géoloc activée)
+     =========================================================== -->
+<section class="section">
+    <div class="section__head">
+        <h2 class="section__title">
+            <span class="section__title-bar"></span>
+            À PROXIMITÉ
+        </h2>
+        <span class="section__meta">
+            <span class="section__meta-pin">⊙</span> 75 m
+        </span>
+    </div>
+
+    <div class="cards">
+
+        <!-- Card 1 — Bellevue (avec departures) -->
+        <article class="card">
+            <div class="card__top">
+                <div>
+                    <h3 class="card__name">Bellevue</h3>
+                    <div class="card__sub">
+                        <span>75 m</span><span class="card__sub-sep"></span>
+                        <span>1 min à pied</span><span class="card__sub-sep"></span>
+                        <span>Pôle d'échange</span>
+                    </div>
+                </div>
+                <button class="card__fav" data-fav="true" aria-label="Retirer des favoris">★</button>
+            </div>
+            <div class="card__departures">
+
+                <div class="dep">
+                    <span class="dep__route" data-type="tram">T1</span>
+                    <span class="dep__sign">Hôpital Nord<span class="dep__sign-time">21:17 · prévu</span></span>
+                    <span class="dep__eta" data-now="true">à quai</span>
+                </div>
+
+                <div class="dep">
+                    <span class="dep__route" data-type="tram">T2</span>
+                    <span class="dep__sign">La Terrasse<span class="dep__sign-time">21:18 · prévu</span></span>
+                    <span class="dep__eta" data-soon="true">3<span class="dep__eta-unit">′</span></span>
+                </div>
+
+                <div class="dep">
+                    <span class="dep__route" data-type="bus">M4</span>
+                    <span class="dep__sign">Châteaucreux<span class="dep__sign-time">21:21</span></span>
+                    <span class="dep__eta">7<span class="dep__eta-unit">′</span></span>
+                </div>
+
+                <div class="dep">
+                    <span class="dep__route" data-type="bus">M2</span>
+                    <span class="dep__sign">Métare<span class="dep__sign-time">21:28</span></span>
+                    <span class="dep__eta">14<span class="dep__eta-unit">′</span></span>
+                </div>
+
+            </div>
+        </article>
+
+        <!-- Card 2 — Hôtel de Ville (illustre le regroupement deux directions) -->
+        <article class="card">
+            <div class="card__top">
+                <div>
+                    <h3 class="card__name">Hôtel de Ville</h3>
+                    <div class="card__sub">
+                        <span>220 m</span><span class="card__sub-sep"></span>
+                        <span>3 min à pied</span><span class="card__sub-sep"></span>
+                        <span>2 quais</span>
+                    </div>
+                </div>
+                <button class="card__fav" aria-label="Ajouter aux favoris">☆</button>
+            </div>
+            <div class="card__departures">
+
+                <div class="dep">
+                    <span class="dep__route" data-type="bus">M1</span>
+                    <span class="dep__sign">Bellevue<span class="dep__sign-time">21:18</span></span>
+                    <span class="dep__eta" data-soon="true">4<span class="dep__eta-unit">′</span></span>
+                </div>
+
+                <div class="dep">
+                    <span class="dep__route" data-type="bus">M3</span>
+                    <span class="dep__sign">Solaure<span class="dep__sign-time">21:21</span></span>
+                    <span class="dep__eta">7<span class="dep__eta-unit">′</span></span>
+                </div>
+
+                <div class="dep">
+                    <span class="dep__route" data-type="bus">9</span>
+                    <span class="dep__sign">Tardy / Cours Fauriel<span class="dep__sign-time">21:25</span></span>
+                    <span class="dep__eta">11<span class="dep__eta-unit">′</span></span>
+                </div>
+
+                <div class="dep">
+                    <span class="dep__route" data-type="bus">M7</span>
+                    <span class="dep__sign">Saint-Christo-en-Jarez<span class="dep__sign-time">21:33</span></span>
+                    <span class="dep__eta">19<span class="dep__eta-unit">′</span></span>
+                </div>
+
+            </div>
+        </article>
+
+        <!-- Card 3 — Plantevin (illustre le cas "pas de passages" propre) -->
+        <article class="card">
+            <div class="card__top">
+                <div>
+                    <h3 class="card__name">Plantevin</h3>
+                    <div class="card__sub">
+                        <span>340 m</span><span class="card__sub-sep"></span>
+                        <span>4 min à pied</span>
+                    </div>
+                </div>
+                <button class="card__fav" aria-label="Ajouter aux favoris">☆</button>
+            </div>
+            <div class="card__departures">
+                <div class="dep dep--empty">
+                    <span class="dep__msg">Aucun passage dans les 50 prochaines minutes</span>
+                </div>
+            </div>
+        </article>
+
+    </div>
+</section>
+
+<!-- ===========================================================
+     SECTION — Favoris (avec un exemple actif)
+     =========================================================== -->
+<section class="section">
+    <div class="section__head">
+        <h2 class="section__title">
+            <span class="section__title-bar"></span>
+            FAVORIS
+        </h2>
+        <span class="section__meta">3 ÉPINGLÉS</span>
+    </div>
+
+    <div class="cards">
+
+        <article class="card">
+            <div class="card__top">
+                <div>
+                    <h3 class="card__name">Châteaucreux<em> · gare</em></h3>
+                    <div class="card__sub">
+                        <span>Tram T1 · T3</span><span class="card__sub-sep"></span>
+                        <span>Bus M5 · M6 · 28</span>
+                    </div>
+                </div>
+                <button class="card__fav" data-fav="true" aria-label="Favori">★</button>
+            </div>
+            <div class="card__departures">
+
+                <div class="dep">
+                    <span class="dep__route" data-type="tram">T1</span>
+                    <span class="dep__sign">Solaure<span class="dep__sign-time">21:19</span></span>
+                    <span class="dep__eta" data-soon="true">5<span class="dep__eta-unit">′</span></span>
+                </div>
+
+                <div class="dep">
+                    <span class="dep__route" data-type="tram">T3</span>
+                    <span class="dep__sign">Bellevue<span class="dep__sign-time">21:22</span></span>
+                    <span class="dep__eta">8<span class="dep__eta-unit">′</span></span>
+                </div>
+
+                <div class="dep">
+                    <span class="dep__route" data-type="bus">M5</span>
+                    <span class="dep__sign">Terrenoire<span class="dep__sign-time">21:30</span></span>
+                    <span class="dep__eta">16<span class="dep__eta-unit">′</span></span>
+                </div>
+
+            </div>
+        </article>
+
+    </div>
+</section>
+
+<!-- ===========================================================
+     SECTION — Vélibs à proximité
+     =========================================================== -->
+<section class="section">
+    <div class="section__head">
+        <h2 class="section__title">
+            <span class="section__title-bar"></span>
+            VÉLIVERT
+        </h2>
+        <span class="section__meta">3 STATIONS · 200 m</span>
+    </div>
+
+    <div class="velo-card">
+
+        <div class="velo-row">
+            <div class="velo-row__info">
+                <span class="velo-row__name">Bellevue</span>
+                <span class="velo-row__meta">75 m · 1 min · 7 / 20</span>
+            </div>
+            <div class="velo-row__stat">
+                <span class="velo-row__count">7</span>
+                <span class="velo-row__bar">
+                    <span class="velo-row__fill" style="width: 35%"></span>
+                </span>
+            </div>
+        </div>
+
+        <div class="velo-row">
+            <div class="velo-row__info">
+                <span class="velo-row__name">Carnot</span>
+                <span class="velo-row__meta">180 m · 2 min · 14 / 16</span>
+            </div>
+            <div class="velo-row__stat">
+                <span class="velo-row__count">14</span>
+                <span class="velo-row__bar">
+                    <span class="velo-row__fill" style="width: 88%"></span>
+                </span>
+            </div>
+        </div>
+
+        <div class="velo-row">
+            <div class="velo-row__info">
+                <span class="velo-row__name">Place Jean Jaurès</span>
+                <span class="velo-row__meta">240 m · 3 min · 0 / 18</span>
+            </div>
+            <div class="velo-row__stat">
+                <span class="velo-row__count" data-empty="true">0</span>
+                <span class="velo-row__bar">
+                    <span class="velo-row__fill" data-empty="true" style="width: 0%"></span>
+                </span>
+            </div>
+        </div>
+
+        <div class="velo-row">
+            <div class="velo-row__info">
+                <span class="velo-row__name">Anatole France</span>
+                <span class="velo-row__meta">310 m · 4 min · 2 / 14</span>
+            </div>
+            <div class="velo-row__stat">
+                <span class="velo-row__count" data-warn="true">2</span>
+                <span class="velo-row__bar">
+                    <span class="velo-row__fill" data-warn="true" style="width: 14%"></span>
+                </span>
+            </div>
+        </div>
+
+    </div>
+</section>
+
+<!-- ===========================================================
+     Footer
+     =========================================================== -->
+<footer class="foot">
+    <a class="foot__link" href="/">
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon>
+            <line x1="9" y1="3" x2="9" y2="18"></line>
+            <line x1="15" y1="6" x2="15" y2="21"></line>
+        </svg>
+        Voir sur la carte
+    </a>
+    <span class="foot__creds">
+        OPEN DATA SAINT-ÉTIENNE MÉTROPOLE
+        <span class="foot__sep">·</span>
+        GTFS · GBFS
+        <span class="foot__sep">·</span>
+        TEMPS RÉEL
+    </span>
+</footer>
+
+<script>
+// Live clock — feel
+function tick() {
+    const d = new Date();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    const ss = String(d.getSeconds()).padStart(2, '0');
+    document.getElementById('clock').innerHTML = `${hh}:${mm}<span class="head__clock-sec">:${ss}</span>`;
+}
+tick();
+setInterval(tick, 1000);
+
+// Search has-value toggle (so the clear button appears)
+const sw = document.querySelector('.search__wrap');
+const si = sw.querySelector('.search__input');
+const sc = sw.querySelector('.search__clear');
+si.addEventListener('input', () => sw.dataset.hasValue = (si.value !== '').toString());
+sc.addEventListener('click', () => { si.value = ''; sw.dataset.hasValue = 'false'; si.focus(); });
+
+// Favorite toggle
+document.querySelectorAll('.card__fav').forEach(b => {
+    b.addEventListener('click', e => {
+        e.stopPropagation();
+        const v = b.dataset.fav === 'true';
+        b.dataset.fav = (!v).toString();
+        b.textContent = !v ? '★' : '☆';
+    });
+});
+</script>
+
+</body>
+</html>

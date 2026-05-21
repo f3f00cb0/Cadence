@@ -1,0 +1,26 @@
+/.env.local
+/.env.local.php
+/.env.*.local
+/.env.prod
+/vendor/
+/var/
+/public/bundles/
+/node_modules/
+/.phpunit.cache/
+/.phpunit.result.cache
+.DS_Store
+.idea/
+.vscode/
+
+# WSL parasites
+*:Zone.Identifier
+
+###> symfony/framework-bundle ###
+/.env.local
+/.env.local.php
+/.env.*.local
+/config/secrets/prod/prod.decrypt.private.php
+/public/bundles/
+/var/
+/vendor/
+###< symfony/framework-bundle ###

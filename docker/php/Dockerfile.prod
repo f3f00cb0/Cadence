@@ -1,0 +1,66 @@
+# syntax=docker/dockerfile:1.7
+
+# Stage 1 — install vendor without source code so this layer is cached
+# as long as composer.json/composer.lock don't change.
+FROM composer:2 AS deps
+
+WORKDIR /app
+
+COPY composer.json composer.lock ./
+
+RUN composer install \
+        --no-dev \
+        --no-scripts \
+        --no-autoloader \
+        --prefer-dist \
+        --no-interaction \
+        --no-progress
+
+
+# Stage 2 — runtime image
+FROM php:8.3-fpm-alpine AS final
+
+RUN apk add --no-cache \
+        libzip \
+        libpq \
+        icu-libs \
+        oniguruma \
+        acl \
+    && apk add --no-cache --virtual .build-deps \
+        $PHPIZE_DEPS \
+        libzip-dev \
+        postgresql-dev \
+        icu-dev \
+        oniguruma-dev \
+        linux-headers \
+    && docker-php-ext-install -j$(nproc) pdo pdo_pgsql zip intl opcache \
+    && apk del --no-cache .build-deps \
+    && rm -rf /var/cache/apk/* /tmp/*
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+# Opcache tuned for prod.
+COPY docker/php/opcache.ini /usr/local/etc/php/conf.d/zz-opcache.ini
+
+WORKDIR /var/www/html
+
+# Bring vendor over first so we can keep the layer cache.
+COPY --from=deps /app/vendor ./vendor
+
+# Then the actual source.
+COPY . .
+
+# Regenerate the optimized autoloader now that source + vendor are colocated,
+# and warm the prod cache. APP_SECRET is a build-time placeholder — runtime
+# env overrides it.
+ENV APP_ENV=prod APP_DEBUG=0 APP_SECRET=build
+RUN composer dump-autoload --optimize --classmap-authoritative --no-dev \
+    && mkdir -p var/cache var/log \
+    && php bin/console cache:warmup --no-debug --env=prod \
+    && chown -R www-data:www-data var
+
+USER www-data
+
+EXPOSE 9000
+
+CMD ["php-fpm", "-F"]

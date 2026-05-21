@@ -1,0 +1,47 @@
+# VCS
+.git/
+.gitignore
+.gitattributes
+
+# CI / tooling
+.github/
+.editorconfig
+.idea/
+.vscode/
+
+# Dev-only env files
+.env.local
+.env.local.php
+.env.*.local
+.env.dev
+.env.prod
+.env.local.example
+
+# Dependencies and build caches (rebuilt inside the image)
+vendor/
+node_modules/
+public/bundles/
+
+# Symfony runtime artifacts
+var/cache/*
+var/log/*
+var/share/
+!var/cache/.gitkeep
+!var/log/.gitkeep
+
+# Tests
+tests/
+phpunit.xml
+phpunit.xml.dist
+.phpunit.cache/
+.phpunit.result.cache
+
+# Docs and assorted noise
+*.md
+!README.md
+board-mockup.html
+*:Zone.Identifier
+
+# OS noise
+.DS_Store
+Thumbs.db

@@ -1,0 +1,9 @@
+framework:
+    router:
+        utf8: true
+        default_uri: 'http://localhost:8080'
+
+when@prod:
+    framework:
+        router:
+            strict_requirements: null

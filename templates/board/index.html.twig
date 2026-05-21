@@ -1,0 +1,244 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Board · Mobilité Stéphanoise{% endblock %}
+
+{% block stylesheets %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400;9..144,500;9..144,600;9..144,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ asset('css/board.css') }}">
+<meta name="theme-color" content="#08090b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
+<link rel="apple-touch-icon" href="{{ asset('img/board-icon-192.png') }}">
+{% endblock %}
+
+{% block body %}
+<div class="bd" id="bd-root">
+
+    {# ============================================================
+       HEADER — identité + horloge + meta
+       ============================================================ #}
+    <header class="head" id="bd-header">
+        <div class="head__brand">
+            <span class="head__mark">
+                <span class="head__pulse"></span><strong>SAINT-ÉTIENNE</strong> · 45.44°N · 4.39°E
+            </span>
+            <span class="head__mark">DEPUIS 1881</span>
+        </div>
+
+        <div class="head__row">
+            <span class="head__clock" id="bd-clock" aria-live="polite">--:--<span class="head__clock-sec">:--</span></span>
+            <div class="head__date">
+                <span class="head__date-day" id="bd-date">—</span>
+                <span class="head__sync" id="bd-sync">— jamais synchronisé</span>
+            </div>
+        </div>
+        <div class="bd-pull" id="bd-pull"><span class="bd-pull__bar"></span></div>
+    </header>
+
+    {# ============================================================
+       SEARCH — recherche d'arrêt
+       ============================================================ #}
+    <div class="search">
+        <div class="search__wrap" data-has-value="false" id="bd-search-wrap">
+            <svg class="search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="11" cy="11" r="7"></circle>
+                <path d="m21 21-4.3-4.3"></path>
+            </svg>
+            <input class="search__input" id="bd-search-input" type="search" placeholder="Châteaucreux, Hôtel de Ville, Bellevue…" autocomplete="off" enterkeyhint="search">
+            <button class="search__clear" id="bd-search-clear" type="button" aria-label="Effacer">✕</button>
+        </div>
+        <ul class="search__results" id="bd-search-results" hidden role="listbox"></ul>
+    </div>
+
+    {# Suggestions / favoris rapides scrollables #}
+    <div class="chips" id="bd-chips" role="list"></div>
+
+    <main class="bd-main">
+
+        {# ============================================================
+           SECTION — À proximité
+           ============================================================ #}
+        <section class="section" id="bd-nearby-section" data-needs-geoloc>
+            <div class="section__head">
+                <h2 class="section__title">
+                    <span class="section__title-bar"></span>
+                    À PROXIMITÉ
+                </h2>
+                <span class="section__meta" id="bd-nearby-chip">
+                    <span class="section__meta-pin">⊙</span> —
+                </span>
+            </div>
+            <div class="cards" id="bd-nearby-cards">
+                <div class="empty">
+                    <p class="empty__title">Position non détectée</p>
+                    <p class="empty__sub">Activez la géolocalisation pour voir les arrêts proches.</p>
+                </div>
+            </div>
+        </section>
+
+        {# ============================================================
+           SECTION — Favoris
+           ============================================================ #}
+        <section class="section" id="bd-favorites-section">
+            <div class="section__head">
+                <h2 class="section__title">
+                    <span class="section__title-bar"></span>
+                    FAVORIS
+                </h2>
+                <span class="section__meta" id="bd-favorites-count">0 ÉPINGLÉS</span>
+            </div>
+            <div class="cards" id="bd-favorites-cards">
+                <div class="empty">
+                    <p class="empty__title">Aucun favori</p>
+                    <p class="empty__sub">Épinglez vos arrêts depuis l'icône <span class="empty__kbd">★</span> dans le détail.</p>
+                </div>
+            </div>
+        </section>
+
+        {# ============================================================
+           SECTION — Vélivert
+           ============================================================ #}
+        <section class="section" id="bd-velivert-section" data-needs-geoloc>
+            <div class="section__head">
+                <h2 class="section__title">
+                    <span class="section__title-bar"></span>
+                    VÉLIVERT
+                </h2>
+                <span class="section__meta" id="bd-velivert-chip">—</span>
+            </div>
+            <div id="bd-velivert-list">
+                <div class="empty">
+                    <p class="empty__title">Position non détectée</p>
+                    <p class="empty__sub">Activez la géolocalisation pour voir les Vélivert proches.</p>
+                </div>
+            </div>
+        </section>
+
+        {# ============================================================
+           Footer
+           ============================================================ #}
+        <footer class="foot">
+            <a class="foot__link" href="{{ path('home') }}">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"></polygon>
+                    <line x1="9" y1="3" x2="9" y2="18"></line>
+                    <line x1="15" y1="6" x2="15" y2="21"></line>
+                </svg>
+                Voir sur la carte
+            </a>
+            <span class="foot__creds">
+                OPEN DATA SAINT-ÉTIENNE MÉTROPOLE
+                <span class="foot__sep">·</span>
+                GTFS · GBFS
+                <span class="foot__sep">·</span>
+                TEMPS RÉEL
+            </span>
+        </footer>
+
+    </main>
+
+    {# Geoloc denied / fallback prompt #}
+    <div class="bd-banner" id="bd-geo-banner" hidden>
+        <span>Position non disponible — entrez votre quartier :</span>
+        <form class="bd-banner__form" id="bd-geo-form">
+            <input class="bd-banner__input" id="bd-geo-input" type="search" placeholder="Châteaucreux, Saint-Étienne" autocomplete="off">
+            <button class="bd-banner__btn" type="submit">OK</button>
+        </form>
+    </div>
+
+</div>
+
+{# --- Sheet: Arrêt detail --- #}
+<div class="bd-sheet" id="bd-sheet-area" hidden role="dialog" aria-modal="true" aria-labelledby="bd-sheet-title">
+    <div class="bd-sheet__scrim" data-sheet-close></div>
+    <div class="bd-sheet__panel">
+        <div class="bd-sheet__handle"></div>
+        <header class="bd-sheet__head">
+            <h3 class="bd-sheet__title" id="bd-sheet-title">—</h3>
+            <button type="button" class="bd-fav" id="bd-fav-btn" aria-pressed="false">
+                <span class="bd-fav__icon" aria-hidden="true">☆</span>
+                <span class="bd-fav__label">Favori</span>
+            </button>
+        </header>
+        <nav class="bd-tabs" id="bd-tabs">
+            <button type="button" data-filter="all" class="bd-tab is-active">Tous</button>
+            <button type="button" data-filter="tram" class="bd-tab">Tram</button>
+            <button type="button" data-filter="bus" class="bd-tab">Bus</button>
+        </nav>
+        <ul class="bd-deps" id="bd-deps"></ul>
+        <details class="bd-quays" id="bd-quays">
+            <summary>Quais de cette zone</summary>
+            <ul class="bd-quays__list" id="bd-quays-list"></ul>
+        </details>
+        <button type="button" class="bd-sheet__close" data-sheet-close aria-label="Fermer">Fermer</button>
+    </div>
+</div>
+
+{# --- Sheet: Vélivert detail --- #}
+<div class="bd-sheet" id="bd-sheet-velivert" hidden role="dialog" aria-modal="true" aria-labelledby="bd-sheet-velivert-title">
+    <div class="bd-sheet__scrim" data-sheet-close></div>
+    <div class="bd-sheet__panel">
+        <div class="bd-sheet__handle"></div>
+        <header class="bd-sheet__head">
+            <h3 class="bd-sheet__title" id="bd-sheet-velivert-title">—</h3>
+        </header>
+        <div class="bd-sheet__body" id="bd-velivert-body"></div>
+        <a href="#" class="bd-sheet__cta" id="bd-velivert-go">Y aller (Plans)</a>
+        <button type="button" class="bd-sheet__close" data-sheet-close aria-label="Fermer">Fermer</button>
+    </div>
+</div>
+
+{# Templates #}
+<template id="tpl-area-card">
+    <article class="card" tabindex="0" role="button">
+        <div class="card__top">
+            <div class="card__title">
+                <h3 class="card__name" data-name></h3>
+                <div class="card__sub" data-sub></div>
+            </div>
+            <button type="button" class="card__fav" data-card-fav aria-label="Favori">☆</button>
+        </div>
+        <div class="card__departures" data-deps></div>
+    </article>
+</template>
+
+<template id="tpl-area-card-dep">
+    <div class="dep">
+        <span class="dep__route" data-route></span>
+        <span class="dep__sign" data-sign></span>
+        <span class="dep__eta" data-eta></span>
+    </div>
+</template>
+
+<template id="tpl-velivert-row">
+    <button type="button" class="velo-row">
+        <div class="velo-row__info">
+            <span class="velo-row__name" data-name></span>
+            <span class="velo-row__meta" data-meta></span>
+        </div>
+        <div class="velo-row__stat">
+            <span class="velo-row__count" data-count></span>
+            <span class="velo-row__bar"><span class="velo-row__fill" data-fill></span></span>
+        </div>
+    </button>
+</template>
+
+<template id="tpl-sheet-dep">
+    <li class="bd-dep">
+        <span class="bd-route" data-route></span>
+        <div class="bd-dep__main">
+            <span class="bd-dep__sign" data-sign></span>
+            <span class="bd-dep__time" data-time></span>
+        </div>
+        <span class="bd-dep__eta" data-eta></span>
+    </li>
+</template>
+
+{% endblock %}
+
+{% block javascripts %}
+<script src="{{ asset('js/board.js') }}" type="module"></script>
+{% endblock %}
