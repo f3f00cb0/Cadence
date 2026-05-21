@@ -1,4 +1,4 @@
 twig:
     default_path: '%kernel.project_dir%/templates'
     globals:
-        app_version: '1.0.9'
+        app_version: '1.0.10'
