@@ -139,5 +139,10 @@ jobs:
 
     steps:
       - name: Call Dokploy webhook
+        # Dokploy n'accepte le webhook que s'il l'identifie comme un push GitHub :
+        # le header X-GitHub-Event + un body contenant `ref` sont obligatoires.
         run: |
-          curl -fSsL -X POST "${{ secrets.DOKPLOY_WEBHOOK_URL }}"
+          curl -fSsL -X POST "${{ secrets.DOKPLOY_WEBHOOK_URL }}" \
+               -H "Content-Type: application/json" \
+               -H "X-GitHub-Event: push" \
+               -d '{"ref":"${{ github.ref }}"}'
