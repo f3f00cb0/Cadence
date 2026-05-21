@@ -530,10 +530,10 @@ function initSearch() {
 }
 
 /* ---------- Geoloc fallback banner ---------- */
-function showGeoFallback() {
-    const banner = $('bd-geo-banner');
-    if (banner) banner.hidden = false;
-}
+// function showGeoFallback() {
+//     const banner = $('bd-geo-banner');
+//     if (banner) banner.hidden = false;
+// }
 
 $('bd-geo-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -545,7 +545,7 @@ $('bd-geo-form')?.addEventListener('submit', async (e) => {
         at: Date.now(),
         source: 'manual',
     };
-    $('bd-geo-banner').hidden = true;
+    // $('bd-geo-banner').hidden = true;
     refreshAll();
 });
 

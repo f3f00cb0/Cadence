@@ -140,5 +140,4 @@ jobs:
     steps:
       - name: Call Dokploy webhook
         run: |
-          curl -fSsL -X POST "${{ secrets.DOKPLOY_WEBHOOK_URL }}" \
-               -H "Authorization: Bearer ${{ secrets.DOKPLOY_TOKEN }}"
+          curl -fSsL -X POST "${{ secrets.DOKPLOY_WEBHOOK_URL }}"

@@ -23,6 +23,7 @@ services:
 
   php:
     image: ghcr.io/f3f00cb0/cadence:${IMAGE_TAG:-latest}
+    pull_policy: always
     environment:
       APP_ENV: prod
       APP_DEBUG: "0"
@@ -42,6 +43,7 @@ services:
     # Image custom : nginx + public/ baké en interne (pas de volume partagé).
     # Construite par .github/workflows/deploy.yml en parallèle de l'image php.
     image: ghcr.io/f3f00cb0/cadence-nginx:${IMAGE_TAG:-latest}
+    pull_policy: always
     depends_on:
       - php
     networks:
@@ -71,6 +73,7 @@ services:
 
   worker:
     image: ghcr.io/f3f00cb0/cadence:${IMAGE_TAG:-latest}
+    pull_policy: always
     command:
       - php
       - bin/console
@@ -96,6 +99,7 @@ services:
 
   migrations:
     image: ghcr.io/f3f00cb0/cadence:${IMAGE_TAG:-latest}
+    pull_policy: always
     restart: "no"
     environment:
       APP_ENV: prod
