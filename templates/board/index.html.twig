@@ -56,6 +56,21 @@
     {# Suggestions / favoris rapides scrollables #}
     <div class="chips" id="bd-chips" role="list"></div>
 
+    {# CTA — activation géoloc (masquée dès que la position vient du GPS) #}
+    <div class="bd-geo-cta" id="bd-geo-cta">
+        <div class="bd-geo-cta__text">
+            <strong class="bd-geo-cta__title">Saint-Étienne centre</strong>
+            <span class="bd-geo-cta__sub">Activez votre position pour les arrêts vraiment proches.</span>
+        </div>
+        <button type="button" class="bd-geo-cta__btn" id="bd-geo-activate">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 22s-7-7.58-7-12a7 7 0 1 1 14 0c0 4.42-7 12-7 12z"></path>
+                <circle cx="12" cy="10" r="2.5"></circle>
+            </svg>
+            <span data-label>Activer ma position</span>
+        </button>
+    </div>
+
     <main class="bd-main">
 
         {# ============================================================

@@ -829,6 +829,66 @@ body {
 }
 
 /* ============================================================
+   CTA — activation géoloc (visible tant que source = default/manual)
+   ============================================================ */
+.bd-geo-cta {
+    margin: 0 16px 16px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(135deg, var(--bg-elev-2), var(--bg-elev-3));
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+}
+
+.bd-geo-cta[hidden] { display: none; }
+
+.bd-geo-cta__text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.bd-geo-cta__title {
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink);
+}
+
+.bd-geo-cta__sub {
+    font-size: 12px;
+    color: var(--ink-dim);
+    line-height: 1.35;
+}
+
+.bd-geo-cta__btn {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--asse);
+    color: var(--ink-bright);
+    border: 0;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: .04em;
+    padding: 10px 14px;
+    border-radius: 10px;
+    cursor: pointer;
+    min-height: 44px;
+    transition: background .15s ease;
+}
+
+.bd-geo-cta__btn:hover:not(:disabled) { background: var(--asse-bright); }
+.bd-geo-cta__btn:disabled { opacity: .65; cursor: progress; }
+
+/* ============================================================
    Banner (geo fallback)
    ============================================================ */
 .bd-banner {

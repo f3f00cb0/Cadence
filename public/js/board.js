@@ -19,7 +19,7 @@ const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({
 }[c]));
 
 const state = {
-    position: null,
+    position: { ...SAINT_ETIENNE, at: Date.now(), source: 'default' },
     nearbyAreas: [],
     favorites: loadFavorites(),
     settings: loadSettings(),
@@ -45,11 +45,11 @@ function loadSettings() {
     try {
         const raw = localStorage.getItem(SETTINGS_KEY);
         return Object.assign(
-            { allowGeoloc: true, showTram: true, showBus: true, showVelo: true },
+            { allowGeoloc: true, showTram: true, showBus: true, showVelo: true, geolocGranted: false },
             raw ? JSON.parse(raw) : {},
         );
     } catch {
-        return { allowGeoloc: true, showTram: true, showBus: true, showVelo: true };
+        return { allowGeoloc: true, showTram: true, showBus: true, showVelo: true, geolocGranted: false };
     }
 }
 
@@ -57,21 +57,37 @@ function saveSettings() {
     try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(state.settings)); } catch {}
 }
 
-/* ---------- Geolocation ---------- */
-function getPosition() {
-    if (state.position && Date.now() - state.position.at < GEO_CACHE_MS) {
-        return Promise.resolve(state.position);
-    }
+/* ---------- Geolocation ----------
+   La requête native n'est jamais déclenchée automatiquement : iOS Safari
+   bloque/ignore souvent le prompt sans geste utilisateur. `requestGeoloc()`
+   doit donc être appelée depuis un handler de click (bouton "Activer ma
+   position"). Par défaut, on travaille avec Saint-Étienne centre. */
+function requestGeoloc() {
     if (!state.settings.allowGeoloc || !('geolocation' in navigator)) {
-        return Promise.reject(new Error('geoloc-disabled'));
+        return Promise.reject(new Error('geoloc-unavailable'));
     }
     return new Promise((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(
             (p) => {
-                state.position = { lat: p.coords.latitude, lon: p.coords.longitude, at: Date.now() };
+                state.position = {
+                    lat: p.coords.latitude,
+                    lon: p.coords.longitude,
+                    at: Date.now(),
+                    source: 'geoloc',
+                };
+                if (!state.settings.geolocGranted) {
+                    state.settings.geolocGranted = true;
+                    saveSettings();
+                }
                 resolve(state.position);
             },
-            reject,
+            (err) => {
+                if (err && err.code === err.PERMISSION_DENIED && state.settings.geolocGranted) {
+                    state.settings.geolocGranted = false;
+                    saveSettings();
+                }
+                reject(err);
+            },
             { enableHighAccuracy: false, maximumAge: GEO_CACHE_MS, timeout: 8000 },
         );
     });
@@ -273,19 +289,8 @@ async function renderNearby() {
     const cards = $('bd-nearby-cards');
     const chip = $('bd-nearby-chip');
 
-    const position = await getPosition().catch(() => null);
-    if (!position) {
-        section.dataset.disabled = 'true';
-        cards.innerHTML = `
-            <div class="empty">
-                <p class="empty__title">Position non détectée</p>
-                <p class="empty__sub">Activez la géolocalisation pour voir les arrêts proches.</p>
-            </div>`;
-        chip.innerHTML = '<span class="section__meta-pin">⊙</span> —';
-        showGeoFallback();
-        return;
-    }
-    section.dataset.disabled = 'false';
+    const position = state.position;
+    section.dataset.source = position.source;
 
     const areas = await fetchNearbyAreas(position.lat, position.lon);
     state.nearbyAreas = areas;
@@ -349,16 +354,7 @@ async function renderVelivert() {
         chip.textContent = '—';
         return;
     }
-    const pos = await getPosition().catch(() => null);
-    if (!pos) {
-        list.innerHTML = `
-            <div class="empty">
-                <p class="empty__title">Position non détectée</p>
-                <p class="empty__sub">Activez la géolocalisation pour voir les Vélivert proches.</p>
-            </div>`;
-        chip.textContent = '—';
-        return;
-    }
+    const pos = state.position;
     const stations = await fetchNearbyVelivert(pos.lat, pos.lon);
     if (stations.length === 0) {
         list.innerHTML = `
@@ -544,10 +540,42 @@ $('bd-geo-form')?.addEventListener('submit', async (e) => {
     const value = $('bd-geo-input').value.trim();
     let pos;
     if (value) pos = await geocodeFallback(value);
-    state.position = pos ?? { ...SAINT_ETIENNE, at: Date.now() };
+    state.position = {
+        ...(pos ?? SAINT_ETIENNE),
+        at: Date.now(),
+        source: 'manual',
+    };
     $('bd-geo-banner').hidden = true;
     refreshAll();
 });
+
+/* ---------- Bouton "Activer ma position" ---------- */
+function initGeoActivate() {
+    const btn = $('bd-geo-activate');
+    if (!btn) return;
+    const labelEl = btn.querySelector('[data-label]') ?? btn;
+    const originalLabel = labelEl.textContent;
+    btn.addEventListener('click', async () => {
+        if (btn.disabled) return;
+        btn.disabled = true;
+        labelEl.textContent = 'Localisation…';
+        try {
+            await requestGeoloc();
+            await refreshAll();
+        } catch {
+            showGeoFallback();
+        } finally {
+            btn.disabled = false;
+            labelEl.textContent = originalLabel;
+        }
+    });
+}
+
+function updateGeoCtaVisibility() {
+    const cta = $('bd-geo-cta');
+    if (!cta) return;
+    cta.hidden = state.position?.source === 'geoloc';
+}
 
 /* ---------- Sheet: area detail ---------- */
 async function openAreaSheet(area) {
@@ -734,11 +762,11 @@ function initPullToRefresh() {
 
 /* ---------- Refresh wiring ---------- */
 async function refreshAll() {
-    state.position = null;
     try {
         await Promise.all([renderNearby(), renderFavorites(), renderVelivert()]);
         state.lastSync = Date.now();
     } finally {
+        updateGeoCtaVisibility();
         updateSyncLabel();
     }
 }
@@ -759,9 +787,17 @@ function boot() {
 
     initPullToRefresh();
     initSearch();
+    initGeoActivate();
     renderChips();
 
     refreshAll();
+
+    // Si l'utilisateur a déjà accordé la permission, on retente silencieusement
+    // au boot (pas de prompt attendu — déjà autorisé pour cette origine).
+    if (state.settings.geolocGranted) {
+        requestGeoloc().then(() => refreshAll()).catch(() => {});
+    }
+
     state.syncTimer = setInterval(updateSyncLabel, 5000);
     setInterval(refreshAll, 60_000);
 }
