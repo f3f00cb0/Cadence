@@ -2,7 +2,7 @@
     "name": "Mobilité Stéphanoise",
     "short_name": "Mobilité",
     "description": "STAS et Vélivert temps réel — Saint-Étienne",
-    "start_url": "/board",
+    "start_url": "/",
     "scope": "/",
     "display": "standalone",
     "orientation": "portrait",

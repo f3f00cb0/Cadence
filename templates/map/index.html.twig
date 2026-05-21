@@ -1,0 +1,160 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Carte · Mobilité Stéphanoise — STAS · Vélivert{% endblock %}
+
+{% block stylesheets %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400;9..144,500;9..144,600;9..144,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ asset('css/map.css') }}">
+<meta name="theme-color" content="#08090b">
+<link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
+<link rel="apple-touch-icon" href="{{ asset('img/board-icon-192.png') }}">
+{% endblock %}
+
+{% block body %}
+<div class="mp" id="mp-root">
+
+    {# ============================================================
+       Sidebar — identité, recherche, board contextuel
+       ============================================================ #}
+    <aside class="mp-aside" id="mp-aside">
+
+        {# Header — identité + horloge #}
+        <header class="mp-head">
+            <div class="mp-head__marks">
+                <span class="mp-head__mark">
+                    <span class="mp-head__pulse"></span><strong>SAINT-ÉTIENNE</strong> · 45.44°N · 4.39°E
+                </span>
+                <span class="mp-head__mark mp-head__mark--alt">DEPUIS 1881</span>
+            </div>
+
+            <h1 class="mp-head__title">
+                Mobilité<br><em>Stéphanoise</em>
+            </h1>
+
+            <div class="mp-head__meta">
+                <span class="mp-head__clock" id="clock" aria-live="polite">--:--:--</span>
+                <span class="mp-head__live">
+                    <span class="mp-head__live-dot"></span>
+                    STAS · VÉLIVERT · TEMPS RÉEL
+                </span>
+            </div>
+        </header>
+
+        {# Recherche #}
+        <section class="mp-search">
+            <div class="mp-search__head">
+                <span class="mp-section__bar"></span>
+                <h2 class="mp-section__title">RECHERCHE</h2>
+            </div>
+            <div class="mp-search__wrap" id="mp-search-wrap">
+                <svg class="mp-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="7"></circle>
+                    <path d="m21 21-4.3-4.3"></path>
+                </svg>
+                <input type="search" id="stop-search" class="mp-search__input" placeholder="Châteaucreux, Bellevue…" autocomplete="off" enterkeyhint="search">
+            </div>
+            <ul class="mp-search__results" id="search-results" hidden role="listbox"></ul>
+        </section>
+
+        {# Couches / filtres #}
+        <section class="mp-layers">
+            <div class="mp-section__head">
+                <span class="mp-section__bar"></span>
+                <h2 class="mp-section__title">COUCHES</h2>
+            </div>
+            <div class="mp-layers__pills">
+                <button type="button" class="mp-pill is-on" data-layer="areas" aria-pressed="true">
+                    <span class="mp-pill__dot mp-pill__dot--asse"></span> Arrêts
+                </button>
+                <button type="button" class="mp-pill is-on" data-layer="velivert" aria-pressed="true">
+                    <span class="mp-pill__dot mp-pill__dot--velo"></span> Vélivert
+                </button>
+            </div>
+        </section>
+
+        {# Board des prochains passages #}
+        <section class="mp-board" id="mp-board">
+            <div class="mp-section__head">
+                <span class="mp-section__bar"></span>
+                <h2 class="mp-section__title">PROCHAINS PASSAGES</h2>
+                <span class="mp-section__meta" id="board-hint">— Sélectionnez un arrêt</span>
+            </div>
+            <ol class="mp-board__list" id="board-list">
+                <li class="mp-board__empty">
+                    <p class="mp-board__empty-title">La carte attend votre choix</p>
+                    <p class="mp-board__empty-sub">Cliquez sur un arrêt ou utilisez la recherche pour voir les prochains passages.</p>
+                </li>
+            </ol>
+        </section>
+
+        {# Footer — lien vers le board mobile #}
+        <footer class="mp-foot">
+            <a class="mp-foot__link" href="{{ path('home') }}">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <rect x="5" y="3" width="14" height="18" rx="2"></rect>
+                    <line x1="9" y1="7" x2="15" y2="7"></line>
+                    <line x1="9" y1="11" x2="15" y2="11"></line>
+                    <line x1="9" y1="15" x2="13" y2="15"></line>
+                </svg>
+                Mode board mobile
+            </a>
+            <span class="mp-foot__creds">
+                OPEN DATA SAINT-ÉTIENNE MÉTROPOLE
+                <span class="mp-foot__sep">·</span>
+                GTFS · GBFS
+            </span>
+        </footer>
+    </aside>
+
+    {# ============================================================
+       Carte
+       ============================================================ #}
+    <main class="mp-map-wrap">
+        <div id="map" class="mp-map" aria-label="Carte des transports stéphanois"></div>
+
+        {# Overlay haut-gauche — légende #}
+        <div class="mp-overlay mp-overlay--legend" aria-label="Légende">
+            <span class="mp-legend__pill mp-legend__pill--tram">TRAM</span>
+            <span class="mp-legend__pill mp-legend__pill--bus">BUS</span>
+            <span class="mp-legend__pill mp-legend__pill--bike">VÉLIVERT</span>
+        </div>
+
+        {# Overlay bas-centre — ticker live #}
+        <div class="mp-overlay mp-overlay--ticker" id="mp-ticker">
+            <span class="mp-ticker__live">
+                <span class="mp-ticker__dot"></span> LIVE
+            </span>
+            <span class="mp-ticker__sep"></span>
+            <span class="mp-ticker__info" id="velivert-summary">Vélivert : —</span>
+        </div>
+
+        {# Toggle sidebar mobile #}
+        <button type="button" class="mp-aside-toggle" id="mp-aside-toggle" aria-label="Ouvrir le panneau">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6"  x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+        </button>
+    </main>
+
+</div>
+
+{# Template pour une ligne de départ #}
+<template id="tpl-departure">
+    <li class="mp-dep">
+        <span class="mp-dep__route" data-route></span>
+        <div class="mp-dep__main">
+            <span class="mp-dep__sign" data-sign></span>
+            <span class="mp-dep__time" data-time></span>
+        </div>
+        <span class="mp-dep__eta" data-eta></span>
+    </li>
+</template>
+{% endblock %}
+
+{% block javascripts %}
+<script src="{{ asset('js/app.js') }}" defer></script>
+{% endblock %}
