@@ -18,6 +18,19 @@ const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 }[c]));
 
+/* Returns a walking-directions URL: Apple Maps on iOS, Google Maps elsewhere.
+   Both are universal links that open the native app when installed. */
+function directionsUrl(lat, lon, label) {
+    if (lat == null || lon == null) return '#';
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (isIOS) {
+        const q = label ? `&q=${encodeURIComponent(label)}` : '';
+        return `https://maps.apple.com/?daddr=${lat},${lon}${q}&dirflg=w`;
+    }
+    return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=walking`;
+}
+
 const state = {
     position: { ...SAINT_ETIENNE, at: Date.now(), source: 'default' },
     nearbyAreas: [],
@@ -573,6 +586,7 @@ async function openAreaSheet(area) {
     document.body.style.overflow = 'hidden';
 
     $('bd-sheet-title').textContent = area.name;
+    $('bd-area-go').href = directionsUrl(area.lat, area.lon, area.name);
     updateFavButton();
     setActiveTab('all');
     $('bd-deps').innerHTML = '<li class="bd-dep" style="color:var(--ink-dim);padding:14px;border:0">Chargement…</li>';
@@ -584,6 +598,7 @@ async function openAreaSheet(area) {
         return;
     }
     state.sheetArea = details.area;
+    $('bd-area-go').href = directionsUrl(details.area.lat, details.area.lon, details.area.name);
     renderSheetDeps(details.departures);
     renderQuays(details.area.stops ?? []);
 }
@@ -697,7 +712,7 @@ function openVelivertSheet(s) {
         <div class="bd-sheet__row"><span>État</span><strong>${s.operational ? 'opérationnelle' : 'hors service'}</strong></div>
         ${s.address ? `<div class="bd-sheet__row"><span>Adresse</span><strong>${escapeHtml(s.address)}</strong></div>` : ''}
     `;
-    $('bd-velivert-go').href = `https://www.openstreetmap.org/?mlat=${s.lat}&mlon=${s.lon}#map=18/${s.lat}/${s.lon}`;
+    $('bd-velivert-go').href = directionsUrl(s.lat, s.lon, s.name);
 }
 
 /* ---------- Sheet close handling ---------- */

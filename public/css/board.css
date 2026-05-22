@@ -1201,6 +1201,7 @@ body {
     height: 44px;
     border-radius: 10px;
     cursor: pointer;
+    flex-shrink: 0;
 }
 
 .bd-sheet__body {
@@ -1242,6 +1243,7 @@ body {
     align-items: center;
     justify-content: center;
     font-weight: 700;
+    flex-shrink: 0;
 }
 
 /* ============================================================
