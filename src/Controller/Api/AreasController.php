@@ -138,6 +138,8 @@ final class AreasController extends AbstractController
             'lat' => $a->getLatitude(),
             'lon' => $a->getLongitude(),
             'radius_m' => $a->getBoundingRadius(),
+            'modes' => $a->getModes(),
+            'routes' => $a->getRoutes(),
         ];
     }
 }

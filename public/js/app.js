@@ -1,8 +1,11 @@
 /* ============================================================
    Mobilité Stéphanoise — carte (front)
+   Markers mode-aware (tram / bus / vélivert) + bottom sheet mobile.
    ============================================================ */
 
 const SAINT_ETIENNE = [45.4397, 4.3872];
+const CHIP_ZOOM_THRESHOLD = 16;          // ≥ ce zoom → chips détaillés, sinon dot
+const MOBILE_BREAKPOINT = '(max-width: 900px)';
 
 const state = {
     map: null,
@@ -11,31 +14,227 @@ const state = {
     selectedArea: null,
     selectionMarker: null,
     refreshTimer: null,
-    layers: { areas: true, velivert: true },
+    layers: { tram: true, bus: true, velivert: true },
+    sheet: { current: 'peek' },
 };
 
-/* Pin "Google Maps style" pour l'arrêt sélectionné.
-   SVG inline → pas de dépendance, couleur réglable via CSS si besoin. */
+const isMobile = () => window.matchMedia(MOBILE_BREAKPOINT).matches;
+
+/* ============================================================
+   Bottom sheet (mobile)
+   ============================================================ */
+
+function setSheetState(next) {
+    if (!['peek', 'half', 'full'].includes(next)) return;
+    state.sheet.current = next;
+    const root = document.getElementById('mp-root');
+    if (root) root.dataset.sheetState = next;
+}
+
+function initSheet() {
+    const root = document.getElementById('mp-root');
+    const aside = document.getElementById('mp-aside');
+    const handle = document.getElementById('mp-sheet-handle');
+    const fab = document.getElementById('mp-fab');
+    const scrim = document.getElementById('mp-scrim');
+    if (!root || !aside || !handle) return;
+
+    setSheetState('peek');
+
+    fab?.addEventListener('click', () => setSheetState('half'));
+    scrim?.addEventListener('click', () => setSheetState('peek'));
+
+    // Drag — pointer events, capture so we keep tracking outside the handle
+    let pointerId = null;
+    let startY = 0;
+    let startTranslate = 0;
+    let currentTranslate = 0;
+    let lastY = 0;
+    let lastT = 0;
+    let velocity = 0;
+
+    const computePx = (state) => {
+        const h = aside.getBoundingClientRect().height;
+        const peek = parseInt(getComputedStyle(document.documentElement)
+            .getPropertyValue('--sheet-peek')) || 160;
+        if (state === 'peek') return h - peek;
+        if (state === 'half') return h - h * 0.62;
+        return 0;
+    };
+
+    const onDown = (e) => {
+        if (!isMobile()) return;
+        pointerId = e.pointerId;
+        handle.setPointerCapture(pointerId);
+        startY = e.clientY;
+        lastY = e.clientY;
+        lastT = performance.now();
+        velocity = 0;
+        startTranslate = computePx(state.sheet.current);
+        currentTranslate = startTranslate;
+        root.dataset.dragging = 'true';
+        aside.style.transform = `translateY(${startTranslate}px)`;
+    };
+
+    const onMove = (e) => {
+        if (pointerId === null) return;
+        const now = performance.now();
+        const dt = Math.max(1, now - lastT);
+        velocity = (e.clientY - lastY) / dt;     // px/ms
+        lastY = e.clientY;
+        lastT = now;
+
+        const dy = e.clientY - startY;
+        const h = aside.getBoundingClientRect().height;
+        currentTranslate = Math.max(0, Math.min(h - 60, startTranslate + dy));
+        aside.style.transform = `translateY(${currentTranslate}px)`;
+    };
+
+    const onUp = () => {
+        if (pointerId === null) return;
+        try { handle.releasePointerCapture(pointerId); } catch (_) {}
+        pointerId = null;
+        delete root.dataset.dragging;
+
+        const snaps = [
+            { name: 'peek', y: computePx('peek') },
+            { name: 'half', y: computePx('half') },
+            { name: 'full', y: computePx('full') },
+        ];
+
+        let target;
+        if (velocity < -0.5) {
+            // Flick up : on monte d'un cran (snap au-dessus le plus proche)
+            const above = snaps.filter(s => s.y < currentTranslate - 1);
+            target = above.length
+                ? above.reduce((a, s) => (s.y > a.y ? s : a))
+                : snaps.reduce((a, s) => (s.y < a.y ? s : a));
+        } else if (velocity > 0.5) {
+            // Flick down : on descend d'un cran (snap en-dessous le plus proche)
+            const below = snaps.filter(s => s.y > currentTranslate + 1);
+            target = below.length
+                ? below.reduce((a, s) => (s.y < a.y ? s : a))
+                : snaps.reduce((a, s) => (s.y > a.y ? s : a));
+        } else {
+            // Settle au plus proche
+            target = snaps.reduce((a, s) =>
+                Math.abs(s.y - currentTranslate) < Math.abs(a.y - currentTranslate) ? s : a
+            );
+        }
+
+        aside.style.transform = '';   // remettre la main au CSS / data-sheet-state
+        setSheetState(target.name);
+    };
+
+    handle.addEventListener('pointerdown', onDown);
+    handle.addEventListener('pointermove', onMove);
+    handle.addEventListener('pointerup', onUp);
+    handle.addEventListener('pointercancel', onUp);
+
+    // Tap sur la poignée (pas de drag) = toggle peek ↔ half
+    handle.addEventListener('click', (e) => {
+        // ignore les clicks générés par un drag (le drag a déjà set le state)
+        if (Math.abs(currentTranslate - startTranslate) > 4) return;
+        if (state.sheet.current === 'peek') setSheetState('half');
+        else if (state.sheet.current === 'half') setSheetState('full');
+        else setSheetState('peek');
+    });
+
+    // Quand la search prend le focus on remonte automatiquement
+    document.getElementById('stop-search')?.addEventListener('focus', () => {
+        if (isMobile() && state.sheet.current === 'peek') setSheetState('half');
+    });
+}
+
+/* ============================================================
+   Marker building — mode-aware
+   ============================================================ */
+
+function passesLayerFilter(area) {
+    const modes = area.modes ?? [];
+    const hasTram = modes.includes('tram');
+    const hasBus  = modes.includes('bus') || modes.includes('trolley');
+    if (hasTram && state.layers.tram) return true;
+    if (hasBus  && state.layers.bus)  return true;
+    if (!hasTram && !hasBus) return state.layers.tram || state.layers.bus;
+    return false;
+}
+
+function dotMode(area) {
+    const modes = area.modes ?? [];
+    const hasTram = modes.includes('tram');
+    const hasBus  = modes.includes('bus') || modes.includes('trolley');
+    if (hasTram && hasBus) return 'multi';
+    if (hasTram) return 'tram';
+    if (modes.includes('trolley') && !modes.includes('bus')) return 'trolley';
+    if (hasBus) return 'bus';
+    return null;
+}
+
+function chipHtml(route) {
+    const t = route.type;
+    const cls = t === 'tram' ? 'mp-marker__chip--tram'
+              : t === 'trolley' ? 'mp-marker__chip--trolley'
+              : 'mp-marker__chip--bus';
+    const label = route.short_name ?? '·';
+    return `<span class="mp-marker__chip ${cls}">${escapeHtml(label)}</span>`;
+}
+
+function buildAreaIcon(area, zoom) {
+    const mode = dotMode(area);
+    if (!mode) return null;
+
+    if (zoom < CHIP_ZOOM_THRESHOLD) {
+        return L.divIcon({
+            className: 'mp-marker mp-marker--dot',
+            html: `<span class="mp-marker__dot mp-marker__dot--${mode}"></span>`,
+            iconSize: [16, 16],
+        });
+    }
+
+    const routes = area.routes ?? [];
+    const MAX = 3;
+    const overflow = Math.max(0, routes.length - MAX);
+    let html = routes.slice(0, MAX).map(chipHtml).join('');
+    if (overflow > 0) {
+        html += `<span class="mp-marker__chip mp-marker__chip--more">+${overflow}</span>`;
+    }
+    // Si pas de routes, fallback dot
+    if (!html) {
+        return L.divIcon({
+            className: 'mp-marker mp-marker--dot',
+            html: `<span class="mp-marker__dot mp-marker__dot--${mode}"></span>`,
+            iconSize: [16, 16],
+        });
+    }
+    return L.divIcon({
+        className: 'mp-marker',
+        html,
+        iconSize: null,
+    });
+}
+
+/* ============================================================
+   Selection pin (vert ASSE — ne conflicte plus avec le rouge tram)
+   ============================================================ */
 function buildSelectionIcon() {
     return L.divIcon({
         className: 'mp-selection-pin',
         html: `
             <svg viewBox="0 0 24 36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                 <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24c0-6.6-5.4-12-12-12z"
-                      fill="#e8463a" stroke="rgba(0,0,0,.35)" stroke-width="0.6"/>
-                <circle cx="12" cy="12" r="4.2" fill="#fff"/>
+                      fill="#14a05e" stroke="rgba(0,0,0,.4)" stroke-width="0.6"/>
+                <circle cx="12" cy="12" r="4.4" fill="#fff"/>
             </svg>`,
-        iconSize: [32, 48],
-        iconAnchor: [16, 48],
-        tooltipAnchor: [0, -44],
+        iconSize: [34, 50],
+        iconAnchor: [17, 50],
+        tooltipAnchor: [0, -46],
     });
 }
 
 function setSelectionPin(area) {
     if (!state.map || area?.lat == null || area?.lon == null) return;
-    if (state.selectionMarker) {
-        state.map.removeLayer(state.selectionMarker);
-    }
+    if (state.selectionMarker) state.map.removeLayer(state.selectionMarker);
     state.selectionMarker = L.marker([area.lat, area.lon], {
         icon: buildSelectionIcon(),
         interactive: false,
@@ -44,7 +243,9 @@ function setSelectionPin(area) {
     }).addTo(state.map);
 }
 
-/* ---------- Map bootstrap ---------- */
+/* ============================================================
+   Map bootstrap
+   ============================================================ */
 function initMap() {
     state.map = L.map('map', {
         zoomControl: false,
@@ -54,14 +255,12 @@ function initMap() {
 
     L.control.zoom({ position: 'bottomright' }).addTo(state.map);
 
-    // Tuiles Carto Dark Matter — rendu sombre éditorial, pas de filtre CSS bricolé
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {
         maxZoom: 19,
         subdomains: 'abcd',
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> · &copy; <a href="https://carto.com/attributions">Carto</a>',
     }).addTo(state.map);
 
-    // Calque labels par-dessus, plus discret
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png', {
         maxZoom: 19,
         subdomains: 'abcd',
@@ -73,11 +272,18 @@ function initMap() {
     state.velivertLayer = L.layerGroup().addTo(state.map);
 
     state.map.on('moveend', refreshAreasInView);
+
+    // Tap sur la carte (hors marker) → on rabaisse la feuille
+    state.map.on('click', () => {
+        if (isMobile() && state.sheet.current !== 'peek') setSheetState('peek');
+    });
 }
 
-/* ---------- Stop areas ---------- */
+/* ============================================================
+   Stop areas
+   ============================================================ */
 async function refreshAreasInView() {
-    if (!state.layers.areas) {
+    if (!state.layers.tram && !state.layers.bus) {
         state.areaLayer.clearLayers();
         return;
     }
@@ -92,11 +298,21 @@ async function refreshAreasInView() {
     const { results } = await res.json();
 
     state.areaLayer.clearLayers();
+    const zoom = state.map.getZoom();
     for (const a of results) {
-        const marker = L.marker([a.lat, a.lon], {
-            icon: L.divIcon({ className: 'area-marker', iconSize: [12, 12] }),
-        }).bindTooltip(a.name, { direction: 'top', offset: [0, -6] });
-        marker.on('click', () => loadDepartures(a));
+        if (!passesLayerFilter(a)) continue;
+        const icon = buildAreaIcon(a, zoom);
+        if (!icon) continue;
+
+        const lines = (a.routes ?? []).map(r => r.short_name).filter(Boolean).join(' · ');
+        const tooltip = lines ? `${a.name} — ${lines}` : a.name;
+
+        const marker = L.marker([a.lat, a.lon], { icon })
+            .bindTooltip(tooltip, { direction: 'top', offset: [0, -8] });
+        marker.on('click', () => {
+            loadDepartures(a);
+            if (isMobile()) setSheetState('half');
+        });
         state.areaLayer.addLayer(marker);
     }
 }
@@ -134,10 +350,8 @@ async function loadDepartures(area) {
         const route = li.querySelector('[data-route]');
         route.textContent = d.routeShortName ?? '·';
         route.dataset.type = d.routeTypeLabel;
-        if (d.routeColor) {
-            route.style.background = d.routeColor;
-            route.style.color = '#111';
-        }
+        // On laisse la palette CSS appliquer le code STAS officiel,
+        // les couleurs GTFS bizarres (orange tram, etc.) sont écrasées.
         li.querySelector('[data-sign]').textContent = d.direction_label ?? d.headsign ?? '';
         li.querySelector('[data-time]').textContent = d.scheduledTime;
         const eta = li.querySelector('[data-eta]');
@@ -152,7 +366,9 @@ async function loadDepartures(area) {
     state.refreshTimer = setTimeout(() => state.selectedArea && loadDepartures(state.selectedArea), 30_000);
 }
 
-/* ---------- Search ---------- */
+/* ============================================================
+   Search
+   ============================================================ */
 function initSearch() {
     const input = document.getElementById('stop-search');
     const results = document.getElementById('search-results');
@@ -178,7 +394,7 @@ function initSearch() {
                     loadDepartures(a);
                     results.hidden = true;
                     input.value = a.name;
-                    closeAside();
+                    if (isMobile()) setSheetState('half');
                 });
                 results.appendChild(li);
             }
@@ -191,11 +407,14 @@ function initSearch() {
     });
 }
 
-/* ---------- Vélivert ---------- */
+/* ============================================================
+   Vélivert
+   ============================================================ */
 async function refreshVelivert() {
     if (!state.layers.velivert) {
         state.velivertLayer.clearLayers();
-        document.getElementById('velivert-summary').textContent = 'Vélivert : couche désactivée';
+        const sum = document.getElementById('velivert-summary');
+        if (sum) sum.textContent = 'Vélivert : couche désactivée';
         return;
     }
 
@@ -215,15 +434,15 @@ async function refreshVelivert() {
         const full = s.docks === 0 && s.capacity > 0;
         const offline = !s.operational;
 
-        const classes = ['velivert-marker'];
+        const classes = ['mp-marker__chip', 'mp-marker__chip--velivert'];
         if (offline) classes.push('is-offline');
         else if (empty) classes.push('is-empty');
         else if (full) classes.push('is-full');
 
         const icon = L.divIcon({
-            className: classes.join(' '),
-            html: `<span>${s.bikes}</span>`,
-            iconSize: [30, 30],
+            className: 'mp-marker',
+            html: `<span class="${classes.join(' ')}">${s.bikes}</span>`,
+            iconSize: null,
         });
 
         const marker = L.marker([s.lat, s.lon], { icon })
@@ -233,8 +452,10 @@ async function refreshVelivert() {
         state.velivertLayer.addLayer(marker);
     }
 
-    document.getElementById('velivert-summary').textContent =
-        `Vélivert · ${totalBikes} vélos / ${totalDocks} places · ${stations.length} stations`;
+    const sum = document.getElementById('velivert-summary');
+    if (sum) {
+        sum.textContent = `Vélivert · ${totalBikes} vélos / ${totalDocks} places · ${stations.length} stations`;
+    }
 }
 
 function velivertPopup(s) {
@@ -253,7 +474,9 @@ function escapeHtml(s) {
     }[c]));
 }
 
-/* ---------- Clock ---------- */
+/* ============================================================
+   Clock
+   ============================================================ */
 function initClock() {
     const el = document.getElementById('clock');
     if (!el) return;
@@ -265,7 +488,9 @@ function initClock() {
     setInterval(tick, 1000);
 }
 
-/* ---------- Layer toggles ---------- */
+/* ============================================================
+   Layer toggles (Tram · Bus · Vélivert)
+   ============================================================ */
 function initLayerToggles() {
     document.querySelectorAll('.mp-pill[data-layer]').forEach(pill => {
         pill.addEventListener('click', () => {
@@ -274,8 +499,8 @@ function initLayerToggles() {
             pill.classList.toggle('is-on', isOn);
             pill.setAttribute('aria-pressed', String(isOn));
 
-            if (layer === 'areas') {
-                state.layers.areas = isOn;
+            if (layer === 'tram' || layer === 'bus') {
+                state.layers[layer] = isOn;
                 refreshAreasInView();
             } else if (layer === 'velivert') {
                 state.layers.velivert = isOn;
@@ -285,32 +510,28 @@ function initLayerToggles() {
     });
 }
 
-/* ---------- Sidebar mobile ---------- */
-function initAsideToggle() {
-    const toggle = document.getElementById('mp-aside-toggle');
-    const root = document.getElementById('mp-root');
-    if (!toggle || !root) return;
-
-    toggle.addEventListener('click', () => {
-        root.classList.toggle('is-aside-open');
-    });
-
-    // Tap sur le map ferme le panneau
-    document.getElementById('map')?.addEventListener('click', closeAside);
-}
-
-function closeAside() {
-    document.getElementById('mp-root')?.classList.remove('is-aside-open');
-}
-
-/* ---------- Bootstrap ---------- */
+/* ============================================================
+   Bootstrap
+   ============================================================ */
 document.addEventListener('DOMContentLoaded', () => {
     initMap();
     initSearch();
     initClock();
     initLayerToggles();
-    initAsideToggle();
+    initSheet();
     refreshAreasInView();
     refreshVelivert();
     setInterval(refreshVelivert, 60_000);
+
+    // Re-init du sheet quand on bascule mobile ↔ desktop (orientation, resize)
+    window.matchMedia(MOBILE_BREAKPOINT).addEventListener('change', () => {
+        if (!isMobile()) {
+            const root = document.getElementById('mp-root');
+            const aside = document.getElementById('mp-aside');
+            if (root) delete root.dataset.dragging;
+            if (aside) aside.style.transform = '';
+        } else {
+            setSheetState(state.sheet.current);
+        }
+    });
 });

@@ -67,7 +67,10 @@ final class AreaDepartureAggregator
             'headsign' => $d->headsign,
             'direction_label' => self::directionLabel($d->headsign),
             'scheduledTime' => $d->scheduledTime,
+            'realtimeTime' => $d->realtimeTime,
             'minutesUntil' => $d->minutesUntil,
+            'isRealtime' => $d->isRealtime,
+            'delaySeconds' => $d->delaySeconds,
             'tripId' => $d->tripId,
             'stopId' => $stopId,
         ];

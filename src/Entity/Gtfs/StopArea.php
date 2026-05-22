@@ -5,6 +5,7 @@ namespace App\Entity\Gtfs;
 use App\Repository\Gtfs\StopAreaRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: StopAreaRepository::class)]
@@ -29,6 +30,24 @@ class StopArea
     #[ORM\Column]
     private int $boundingRadius = 0;
 
+    /**
+     * Distinct transport modes served by the area, e.g. ['tram', 'bus'].
+     * Denormalized at GTFS import time for fast at-a-glance map rendering.
+     *
+     * @var string[]
+     */
+    #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $modes = [];
+
+    /**
+     * Routes serving the area, ordered: trams first, then ascending short name.
+     * Each row: { short_name, type ('tram'|'bus'|'trolley'|'metro'|'train'), color, text_color }.
+     *
+     * @var array<int, array{short_name: ?string, type: string, color: ?string, text_color: ?string}>
+     */
+    #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $routes = [];
+
     /** @var Collection<int, Stop> */
     #[ORM\OneToMany(targetEntity: Stop::class, mappedBy: 'area')]
     private Collection $stops;
@@ -49,5 +68,13 @@ class StopArea
     public function setLongitude(float $longitude): self { $this->longitude = (string) $longitude; return $this; }
     public function getBoundingRadius(): int { return $this->boundingRadius; }
     public function setBoundingRadius(int $boundingRadius): self { $this->boundingRadius = $boundingRadius; return $this; }
+    /** @return string[] */
+    public function getModes(): array { return $this->modes; }
+    /** @param string[] $modes */
+    public function setModes(array $modes): self { $this->modes = array_values($modes); return $this; }
+    /** @return array<int, array{short_name: ?string, type: string, color: ?string, text_color: ?string}> */
+    public function getRoutes(): array { return $this->routes; }
+    /** @param array<int, array{short_name: ?string, type: string, color: ?string, text_color: ?string}> $routes */
+    public function setRoutes(array $routes): self { $this->routes = array_values($routes); return $this; }
     public function getStops(): Collection { return $this->stops; }
 }
