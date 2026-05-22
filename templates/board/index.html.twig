@@ -74,6 +74,25 @@
     <main class="bd-main">
 
         {# ============================================================
+           SECTION — Favoris
+           ============================================================ #}
+        <section class="section" id="bd-favorites-section">
+            <div class="section__head">
+                <h2 class="section__title">
+                    <span class="section__title-bar"></span>
+                    FAVORIS
+                </h2>
+                <span class="section__meta" id="bd-favorites-count">0 ÉPINGLÉS</span>
+            </div>
+            <div class="cards" id="bd-favorites-cards">
+                <div class="empty">
+                    <p class="empty__title">Aucun favori</p>
+                    <p class="empty__sub">Épinglez vos arrêts depuis l'icône <span class="empty__kbd">★</span> dans le détail.</p>
+                </div>
+            </div>
+        </section>
+
+        {# ============================================================
            SECTION — À proximité
            ============================================================ #}
         <section class="section" id="bd-nearby-section" data-needs-geoloc>
@@ -90,25 +109,6 @@
                 <div class="empty">
                     <p class="empty__title">Position non détectée</p>
                     <p class="empty__sub">Activez la géolocalisation pour voir les arrêts proches.</p>
-                </div>
-            </div>
-        </section>
-
-        {# ============================================================
-           SECTION — Favoris
-           ============================================================ #}
-        <section class="section" id="bd-favorites-section">
-            <div class="section__head">
-                <h2 class="section__title">
-                    <span class="section__title-bar"></span>
-                    FAVORIS
-                </h2>
-                <span class="section__meta" id="bd-favorites-count">0 ÉPINGLÉS</span>
-            </div>
-            <div class="cards" id="bd-favorites-cards">
-                <div class="empty">
-                    <p class="empty__title">Aucun favori</p>
-                    <p class="empty__sub">Épinglez vos arrêts depuis l'icône <span class="empty__kbd">★</span> dans le détail.</p>
                 </div>
             </div>
         </section>

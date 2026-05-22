@@ -25,7 +25,7 @@
             <span class="mp-sheet-handle__grip"></span>
         </div>
 
-        {# Header — back-to-home + identité + horloge #}
+        {# Header — back-to-home + repère Saint-Étienne #}
         <header class="mp-head">
             <div class="mp-head__top">
                 <a class="mp-head__back" href="{{ path('home') }}" aria-label="Retour à l'accueil">
@@ -37,18 +37,6 @@
                 </a>
                 <span class="mp-head__mark">
                     <span class="mp-head__pulse"></span><strong>SAINT-ÉTIENNE</strong>
-                </span>
-            </div>
-
-            <h1 class="mp-head__title">
-                Mobilité<br><em>Stéphanoise</em>
-            </h1>
-
-            <div class="mp-head__meta">
-                <span class="mp-head__clock" id="clock" aria-live="polite">--:--:--</span>
-                <span class="mp-head__live">
-                    <span class="mp-head__live-dot"></span>
-                    TEMPS RÉEL
                 </span>
             </div>
         </header>
@@ -148,6 +136,17 @@
             <span class="mp-ticker__sep"></span>
             <span class="mp-ticker__info" id="velivert-summary">Vélivert : —</span>
         </div>
+
+        {# Bouton « me localiser » — haut-droit, centre la carte sur la position courante #}
+        <button type="button" class="mp-locate-btn" id="mp-locate-btn" data-state="idle" aria-label="Me localiser">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M12 2v3"></path>
+                <path d="M12 19v3"></path>
+                <path d="M2 12h3"></path>
+                <path d="M19 12h3"></path>
+            </svg>
+        </button>
 
         {# Floating action button (mobile) — ouvre la feuille à mi-hauteur #}
         <button type="button" class="mp-fab" id="mp-fab" aria-label="Ouvrir le panneau de recherche">

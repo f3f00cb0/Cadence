@@ -200,60 +200,6 @@ html, body {
     50%      { opacity: .55; box-shadow: 0 0 0 4px transparent; }
 }
 
-.mp-head__title {
-    font-family: var(--display);
-    font-weight: 800;
-    font-size: 40px;
-    line-height: 0.95;
-    margin: 0 0 18px;
-    letter-spacing: -0.025em;
-    color: var(--ink);
-    font-variation-settings: "opsz" 144, "SOFT" 40;
-}
-
-.mp-head__title em {
-    font-style: italic;
-    font-weight: 500;
-    color: var(--asse-bright);
-    font-variation-settings: "opsz" 144, "SOFT" 100;
-}
-
-.mp-head__meta {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 14px;
-}
-
-.mp-head__clock {
-    font-family: var(--mono);
-    font-size: 22px;
-    font-weight: 500;
-    color: var(--ink);
-    letter-spacing: -0.01em;
-    font-feature-settings: 'tnum' 1, 'zero' 1;
-    line-height: 1;
-}
-
-.mp-head__live {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-family: var(--mono);
-    font-size: 9.5px;
-    letter-spacing: 0.2em;
-    color: var(--ink-dim);
-    text-transform: uppercase;
-}
-
-.mp-head__live-dot {
-    width: 5px;
-    height: 5px;
-    background: var(--asse-bright);
-    border-radius: 50%;
-    animation: mp-pulse 2s var(--ease-in-out) infinite;
-}
-
 /* ============================================================
    Sections — titre commun
    ============================================================ */
@@ -880,6 +826,95 @@ html, body {
     opacity: 0.8;
 }
 
+/* ============================================================
+   Position utilisateur — point bleu façon Google Maps
+   ============================================================ */
+.mp-user-dot {
+    background: transparent !important;
+    border: 0 !important;
+    pointer-events: none;
+}
+
+.mp-user-dot__core {
+    position: relative;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #1a8cff;
+    border: 3px solid #fff;
+    box-shadow: 0 1px 6px rgba(0, 0, 0, .55), 0 0 0 1px rgba(26, 140, 255, .35);
+}
+
+.mp-user-dot__core::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    margin-left: -8px;
+    margin-top: -8px;
+    border-radius: 50%;
+    background: rgba(26, 140, 255, .4);
+    animation: mp-user-pulse 2.2s var(--ease-out) infinite;
+    z-index: -1;
+}
+
+@keyframes mp-user-pulse {
+    0%   { transform: scale(.6); opacity: .85; }
+    100% { transform: scale(3);  opacity: 0; }
+}
+
+/* Bouton « me localiser » — haut-droit de la carte */
+.mp-locate-btn {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    z-index: 600;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: rgba(11, 14, 18, .85);
+    border: 1px solid var(--rule);
+    color: var(--ink);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: var(--shadow-overlay);
+    backdrop-filter: blur(10px);
+    transition: border-color .15s var(--ease-out), color .15s var(--ease-out), transform .15s var(--ease-out);
+}
+
+.mp-locate-btn:hover {
+    border-color: var(--asse);
+    color: var(--asse-bright);
+}
+
+.mp-locate-btn:active { transform: scale(.95); }
+
+.mp-locate-btn[data-state="seeking"] {
+    color: var(--asse-bright);
+    border-color: var(--asse);
+    animation: mp-locate-spin 1.4s linear infinite;
+}
+
+.mp-locate-btn[data-state="active"] {
+    color: #1a8cff;
+    border-color: rgba(26, 140, 255, .6);
+    background: rgba(26, 140, 255, .12);
+}
+
+.mp-locate-btn[data-state="error"] {
+    color: var(--danger);
+    border-color: var(--danger);
+}
+
+@keyframes mp-locate-spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
+}
+
 /* Pinpoint pour l'arrêt sélectionné — vert ASSE (ne conflicte plus avec le rouge tram) */
 .mp-selection-pin {
     background: transparent !important;
@@ -1122,9 +1157,8 @@ html, body {
     }
 
     /* Header plus compact */
-    .mp-head { padding: 8px 22px 18px; }
-    .mp-head__title { font-size: 30px; margin-bottom: 14px; }
-    .mp-head__top { margin-bottom: 12px; }
+    .mp-head { padding: 8px 22px 14px; }
+    .mp-head__top { margin-bottom: 0; }
 
     /* Search prend toute la largeur disponible */
     .mp-search { padding: 16px 22px 6px; }
@@ -1139,9 +1173,16 @@ html, body {
     .mp-toolbar {
         top: 14px;
         left: 14px;
-        right: 14px;
+        right: 68px;          /* place pour le bouton « me localiser » */
         max-width: none;
         gap: 6px;
+    }
+
+    .mp-locate-btn {
+        top: 14px;
+        right: 14px;
+        width: 42px;
+        height: 42px;
     }
 
     .mp-chip { font-size: 10px; padding: 8px 12px; min-height: 34px; }
@@ -1225,7 +1266,6 @@ html, body {
     .mp-toolbar { gap: 5px; }
     .mp-chip { padding: 7px 10px; font-size: 9.5px; letter-spacing: 0.1em; }
     .mp-legend__item:nth-child(3) { display: none; } /* on garde tram + bus, vélivert visible via les pills */
-    .mp-head__title { font-size: 26px; }
 }
 
 /* ============================================================

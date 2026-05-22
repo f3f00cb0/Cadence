@@ -16,6 +16,14 @@ const state = {
     refreshTimer: null,
     layers: { tram: true, bus: true, velivert: true },
     sheet: { current: 'peek' },
+    user: {
+        marker: null,
+        accuracyCircle: null,
+        lastFix: null,         // { lat, lon, accuracy }
+        watchId: null,
+        firstFixHandled: false,
+        userInteracted: false, // a-t-il pané/zoomé avant le 1er fix ?
+    },
 };
 
 const isMobile = () => window.matchMedia(MOBILE_BREAKPOINT).matches;
@@ -241,6 +249,131 @@ function setSelectionPin(area) {
         keyboard: false,
         zIndexOffset: 1000,
     }).addTo(state.map);
+}
+
+/* ============================================================
+   Géolocalisation utilisateur — point bleu + recentrage
+   ============================================================ */
+function buildUserIcon() {
+    return L.divIcon({
+        className: 'mp-user-dot',
+        html: `<span class="mp-user-dot__core"></span>`,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+    });
+}
+
+function setLocateBtnState(s) {
+    const btn = document.getElementById('mp-locate-btn');
+    if (btn) btn.dataset.state = s;
+}
+
+function updateUserMarker(lat, lon, accuracy) {
+    if (!state.map) return;
+
+    if (!state.user.marker) {
+        state.user.marker = L.marker([lat, lon], {
+            icon: buildUserIcon(),
+            interactive: false,
+            keyboard: false,
+            zIndexOffset: 1100,
+        }).addTo(state.map);
+    } else {
+        state.user.marker.setLatLng([lat, lon]);
+    }
+
+    const radius = Math.max(5, Math.min(500, accuracy || 30));
+    if (!state.user.accuracyCircle) {
+        state.user.accuracyCircle = L.circle([lat, lon], {
+            radius,
+            interactive: false,
+            color: '#1a8cff',
+            fillColor: '#1a8cff',
+            fillOpacity: 0.12,
+            opacity: 0.55,
+            weight: 1,
+        }).addTo(state.map);
+    } else {
+        state.user.accuracyCircle.setLatLng([lat, lon]);
+        state.user.accuracyCircle.setRadius(radius);
+    }
+}
+
+function recenterOnUser({ zoom } = {}) {
+    const fix = state.user.lastFix;
+    if (!fix || !state.map) return;
+    const z = zoom ?? Math.max(state.map.getZoom(), 16);
+    state.map.setView([fix.lat, fix.lon], z, { animate: true });
+}
+
+function initGeolocation() {
+    const btn = document.getElementById('mp-locate-btn');
+
+    if (!('geolocation' in navigator)) {
+        setLocateBtnState('error');
+        btn?.setAttribute('title', 'Géolocalisation non supportée');
+        return;
+    }
+
+    // Si l'utilisateur pan/zoom avant le premier fix, on ne fera pas d'auto-zoom
+    state.map.on('dragstart', () => { state.user.userInteracted = true; });
+    state.map.on('zoomstart', (e) => {
+        // les zooms programmatiques (recenterOnUser) déclenchent aussi zoomstart,
+        // mais arrivent APRÈS firstFixHandled donc ce flag est sans effet à ce moment-là
+        if (state.user.firstFixHandled) return;
+        state.user.userInteracted = true;
+    });
+
+    setLocateBtnState('seeking');
+
+    state.user.watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+            const { latitude: lat, longitude: lon, accuracy } = pos.coords;
+            state.user.lastFix = { lat, lon, accuracy };
+            updateUserMarker(lat, lon, accuracy);
+            setLocateBtnState('active');
+
+            if (!state.user.firstFixHandled) {
+                state.user.firstFixHandled = true;
+                if (!state.user.userInteracted) {
+                    state.map.setView([lat, lon], 16, { animate: true });
+                }
+            }
+        },
+        (err) => {
+            // Permission refusée ou position indisponible — on reste sur Saint-Étienne
+            console.warn('[geo]', err.message);
+            setLocateBtnState(err.code === err.PERMISSION_DENIED ? 'idle' : 'error');
+        },
+        {
+            enableHighAccuracy: true,
+            maximumAge: 15_000,
+            timeout: 20_000,
+        }
+    );
+
+    // Click → recentre sur la dernière position connue, ou relance une requête si rien
+    btn?.addEventListener('click', () => {
+        if (state.user.lastFix) {
+            recenterOnUser();
+            return;
+        }
+        setLocateBtnState('seeking');
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const { latitude: lat, longitude: lon, accuracy } = pos.coords;
+                state.user.lastFix = { lat, lon, accuracy };
+                updateUserMarker(lat, lon, accuracy);
+                setLocateBtnState('active');
+                state.map.setView([lat, lon], 16, { animate: true });
+            },
+            (err) => {
+                console.warn('[geo]', err.message);
+                setLocateBtnState(err.code === err.PERMISSION_DENIED ? 'idle' : 'error');
+            },
+            { enableHighAccuracy: true, timeout: 15_000 }
+        );
+    });
 }
 
 /* ============================================================
@@ -475,20 +608,6 @@ function escapeHtml(s) {
 }
 
 /* ============================================================
-   Clock
-   ============================================================ */
-function initClock() {
-    const el = document.getElementById('clock');
-    if (!el) return;
-    const tick = () => {
-        const d = new Date();
-        el.textContent = d.toLocaleTimeString('fr-FR', { hour12: false });
-    };
-    tick();
-    setInterval(tick, 1000);
-}
-
-/* ============================================================
    Layer toggles (Tram · Bus · Vélivert)
    ============================================================ */
 function initLayerToggles() {
@@ -516,9 +635,9 @@ function initLayerToggles() {
 document.addEventListener('DOMContentLoaded', () => {
     initMap();
     initSearch();
-    initClock();
     initLayerToggles();
     initSheet();
+    initGeolocation();
     refreshAreasInView();
     refreshVelivert();
     setInterval(refreshVelivert, 60_000);
