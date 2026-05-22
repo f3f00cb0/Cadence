@@ -1046,6 +1046,7 @@ body {
 
 .bd-tabs {
     display: flex;
+    flex-shrink: 0;
     gap: 6px;
     padding: 12px 20px;
     overflow-x: auto;
