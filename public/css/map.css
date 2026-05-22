@@ -780,6 +780,28 @@ html, body {
         0 0 18px -1px var(--asse-bright);
 }
 
+/* Pinpoint "Google Maps style" pour l'arrêt sélectionné */
+.mp-selection-pin {
+    background: transparent !important;
+    border: 0 !important;
+    pointer-events: none;
+    filter: drop-shadow(0 6px 6px rgba(0, 0, 0, .45));
+    transform-origin: 50% 100%;
+    animation: mp-pin-drop .35s cubic-bezier(.2, .9, .25, 1.2);
+}
+
+.mp-selection-pin svg {
+    width: 32px;
+    height: 48px;
+    display: block;
+}
+
+@keyframes mp-pin-drop {
+    0%   { transform: translateY(-18px) scale(.6); opacity: 0; }
+    60%  { transform: translateY(2px)   scale(1.05); opacity: 1; }
+    100% { transform: translateY(0)     scale(1); opacity: 1; }
+}
+
 .stop-marker {
     background: var(--asse-bright);
     border: 2px solid #08090b;

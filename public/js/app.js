@@ -9,9 +9,40 @@ const state = {
     areaLayer: null,
     velivertLayer: null,
     selectedArea: null,
+    selectionMarker: null,
     refreshTimer: null,
     layers: { areas: true, velivert: true },
 };
+
+/* Pin "Google Maps style" pour l'arrêt sélectionné.
+   SVG inline → pas de dépendance, couleur réglable via CSS si besoin. */
+function buildSelectionIcon() {
+    return L.divIcon({
+        className: 'mp-selection-pin',
+        html: `
+            <svg viewBox="0 0 24 36" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 24 12 24s12-15 12-24c0-6.6-5.4-12-12-12z"
+                      fill="#e8463a" stroke="rgba(0,0,0,.35)" stroke-width="0.6"/>
+                <circle cx="12" cy="12" r="4.2" fill="#fff"/>
+            </svg>`,
+        iconSize: [32, 48],
+        iconAnchor: [16, 48],
+        tooltipAnchor: [0, -44],
+    });
+}
+
+function setSelectionPin(area) {
+    if (!state.map || area?.lat == null || area?.lon == null) return;
+    if (state.selectionMarker) {
+        state.map.removeLayer(state.selectionMarker);
+    }
+    state.selectionMarker = L.marker([area.lat, area.lon], {
+        icon: buildSelectionIcon(),
+        interactive: false,
+        keyboard: false,
+        zIndexOffset: 1000,
+    }).addTo(state.map);
+}
 
 /* ---------- Map bootstrap ---------- */
 function initMap() {
@@ -79,6 +110,7 @@ function setBoardHint(text, fresh = false) {
 
 async function loadDepartures(area) {
     state.selectedArea = area;
+    setSelectionPin(area);
     setBoardHint(`→ ${area.name}`, true);
     const list = document.getElementById('board-list');
     list.innerHTML = '<li class="mp-dep--loading">Chargement…</li>';
