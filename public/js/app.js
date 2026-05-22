@@ -16,10 +16,12 @@ const state = {
 /* ---------- Map bootstrap ---------- */
 function initMap() {
     state.map = L.map('map', {
-        zoomControl: true,
+        zoomControl: false,
         attributionControl: true,
         zoomSnap: 0.5,
     }).setView(SAINT_ETIENNE, 14);
+
+    L.control.zoom({ position: 'bottomright' }).addTo(state.map);
 
     // Tuiles Carto Dark Matter — rendu sombre éditorial, pas de filtre CSS bricolé
     L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png', {

@@ -224,19 +224,6 @@ function buildAreaCard(area, departures, opts = {}) {
         sub.appendChild(span);
     });
 
-    const favBtn = node.querySelector('[data-card-fav]');
-    const fav = isFavorite(area.id);
-    favBtn.dataset.fav = fav ? 'true' : 'false';
-    favBtn.textContent = fav ? '★' : '☆';
-    favBtn.setAttribute('aria-label', fav ? 'Retirer des favoris' : 'Ajouter aux favoris');
-    favBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        toggleFavorite(area);
-        const nowFav = isFavorite(area.id);
-        favBtn.dataset.fav = nowFav ? 'true' : 'false';
-        favBtn.textContent = nowFav ? '★' : '☆';
-    });
-
     const depsContainer = node.querySelector('[data-deps]');
     const filtered = (departures ?? []).filter(d => routeTypeAllowed(d.routeTypeLabel));
 

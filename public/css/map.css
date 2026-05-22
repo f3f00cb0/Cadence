@@ -686,7 +686,7 @@ html, body {
 }
 
 .leaflet-touch .leaflet-control-zoom {
-    margin-top: 18px !important;
+    margin-bottom: 18px !important;
     margin-right: 18px !important;
 }
 
