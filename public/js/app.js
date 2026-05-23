@@ -554,6 +554,107 @@ function setBoardHint(text, fresh = false) {
     el.style.color = fresh ? 'var(--asse-bright)' : '';
 }
 
+/* ============================================================
+   Trip timeline — déplie les arrêts à venir d'un trajet (inline)
+   ============================================================ */
+
+/** Collapse any open trip timelines except `keep` (an <li.mp-dep> to preserve). */
+function collapseOpenTimelines(keep = null) {
+    document.querySelectorAll('.mp-dep.is-open').forEach(li => {
+        if (li === keep) return;
+        li.classList.remove('is-open');
+        const t = li.querySelector('[data-timeline]');
+        if (t) { t.hidden = true; t.innerHTML = ''; }
+        li.querySelector('[data-toggle]')?.setAttribute('aria-expanded', 'false');
+    });
+}
+
+async function toggleTripTimeline(li, dep) {
+    const timeline = li.querySelector('[data-timeline]');
+    const toggle = li.querySelector('[data-toggle]');
+    if (!timeline || !toggle) return;
+
+    if (li.classList.contains('is-open')) {
+        // Toggle off
+        li.classList.remove('is-open');
+        timeline.hidden = true;
+        timeline.innerHTML = '';
+        toggle.setAttribute('aria-expanded', 'false');
+        return;
+    }
+
+    collapseOpenTimelines(li);
+    li.classList.add('is-open');
+    toggle.setAttribute('aria-expanded', 'true');
+    timeline.hidden = false;
+    timeline.innerHTML = '<div class="mp-tl__loading">Chargement de la suite du trajet…</div>';
+
+    const url = `/api/trips/${encodeURIComponent(dep.tripId)}/upcoming-stops`
+        + `?fromSequence=${encodeURIComponent(dep.stopSequence)}`
+        + `&serviceDay=${encodeURIComponent(dep.serviceDay)}`
+        + `&limit=20`;
+
+    const res = await fetch(url);
+    if (!res.ok) {
+        timeline.innerHTML = '<div class="mp-tl__error">Impossible de charger la suite du trajet.</div>';
+        return;
+    }
+    const { trip, stops } = await res.json();
+    timeline.innerHTML = renderTripTimeline(trip, stops);
+
+    // Tap sur un arrêt aval → on charge ses départs (sans détruire le contexte
+    // si l'utilisateur veut revenir : on garde quand même l'arrêt sélectionné).
+    timeline.querySelectorAll('[data-area-id]').forEach(node => {
+        node.addEventListener('click', async () => {
+            const areaId = node.dataset.areaId;
+            if (!areaId) return;
+            const r = await fetch(`/api/areas/${encodeURIComponent(areaId)}/departures?window=90&limit=15`);
+            if (!r.ok) return;
+            const { area } = await r.json();
+            if (area) loadDepartures(area);
+        });
+    });
+}
+
+function renderTripTimeline(trip, stops) {
+    if (!stops || stops.length === 0) {
+        return '<div class="mp-tl__empty">Pas de suite de trajet disponible (trajet terminé ou annulé).</div>';
+    }
+
+    const lineColor = trip.routeColor ? `#${trip.routeColor}` : 'var(--ink-faint)';
+    const directionLabel = trip.headsign ?? '';
+
+    const items = stops.map((s) => {
+        const cls = ['mp-tl__stop'];
+        if (s.isCurrent) cls.push('mp-tl__stop--current');
+        const hasShift = s.realtimeTime && s.realtimeTime !== s.scheduledTime;
+        const timeHtml = hasShift
+            ? `<s class="mp-tl__time-strike">${s.scheduledTime}</s> <strong>${s.realtimeTime}</strong>`
+            : `<strong>${s.scheduledTime}</strong>`;
+        const delayTag = s.delaySeconds ? formatDelayTag(s.delaySeconds) : '';
+        const etaText = s.isCurrent
+            ? 'départ'
+            : (s.minutesUntil === 0 ? 'à quai' : `${s.minutesUntil}′`);
+        const interactive = s.areaId
+            ? `data-area-id="${escapeHtml(s.areaId)}" role="button" tabindex="0"`
+            : '';
+
+        return `
+            <li class="${cls.join(' ')}" ${interactive}>
+                <span class="mp-tl__node" aria-hidden="true"></span>
+                <span class="mp-tl__name">${escapeHtml(s.name)}</span>
+                <span class="mp-tl__time">${timeHtml}${delayTag ? ` <span class="mp-tl__delay">${delayTag}</span>` : ''}</span>
+                <span class="mp-tl__eta">${etaText}</span>
+            </li>`;
+    }).join('');
+
+    const headHtml = directionLabel
+        ? `<div class="mp-tl__head">→ ${escapeHtml(directionLabel)}</div>`
+        : '';
+
+    return `<div class="mp-tl" style="--mp-tl-color:${lineColor}">${headHtml}<ol class="mp-tl__list">${items}</ol></div>`;
+}
+
 async function loadDepartures(area) {
     state.selectedArea = area;
     setSelectionPin(area);
@@ -595,13 +696,29 @@ async function loadDepartures(area) {
         eta.textContent = d.minutesUntil === 0 ? 'à quai' : `${d.minutesUntil}′`;
         if (d.minutesUntil <= 3) eta.dataset.soon = 'true';
         if (d.isRealtime) eta.dataset.rt = 'true';
+
+        const toggle = li.querySelector('[data-toggle]');
+        toggle.addEventListener('click', () => toggleTripTimeline(li, d));
+
         list.appendChild(li);
     }
 
     state.map.setView([area.lat, area.lon], Math.max(state.map.getZoom(), 15));
 
     clearTimeout(state.refreshTimer);
-    state.refreshTimer = setTimeout(() => state.selectedArea && loadDepartures(state.selectedArea), 30_000);
+    const scheduleRefresh = () => {
+        state.refreshTimer = setTimeout(() => {
+            if (!state.selectedArea) return;
+            // L'utilisateur consulte une timeline ouverte — on ne casse pas son contexte,
+            // on attend le prochain tick.
+            if (document.querySelector('.mp-dep.is-open')) {
+                scheduleRefresh();
+                return;
+            }
+            loadDepartures(state.selectedArea);
+        }, 30_000);
+    };
+    scheduleRefresh();
 }
 
 /* ============================================================

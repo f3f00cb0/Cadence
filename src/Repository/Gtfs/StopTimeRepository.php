@@ -47,4 +47,26 @@ class StopTimeRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    /**
+     * Fetch the ordered StopTimes of a trip starting from $fromSequence (inclusive).
+     * Joins the Stop and its Area so callers can render the line without N+1 queries.
+     *
+     * @return StopTime[]
+     */
+    public function findUpcomingForTrip(string $tripId, int $fromSequence, int $limit = 30): array
+    {
+        return $this->createQueryBuilder('st')
+            ->innerJoin('st.stop', 's')
+            ->leftJoin('s.area', 'a')
+            ->addSelect('s', 'a')
+            ->where('IDENTITY(st.trip) = :tripId')
+            ->andWhere('st.stopSequence >= :seq')
+            ->setParameter('tripId', $tripId)
+            ->setParameter('seq', $fromSequence)
+            ->orderBy('st.stopSequence', 'ASC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+    }
 }

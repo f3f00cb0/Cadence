@@ -175,15 +175,21 @@
     <div class="mp-scrim" id="mp-scrim" aria-hidden="true"></div>
 </div>
 
-{# Template pour une ligne de départ #}
+{# Template pour une ligne de départ — la row est un bouton qui déplie la timeline du trajet #}
 <template id="tpl-departure">
     <li class="mp-dep">
-        <span class="mp-dep__route" data-route></span>
-        <div class="mp-dep__main">
-            <span class="mp-dep__sign" data-sign></span>
-            <span class="mp-dep__time" data-time></span>
-        </div>
-        <span class="mp-dep__eta" data-eta></span>
+        <button type="button" class="mp-dep__row" data-toggle aria-expanded="false">
+            <span class="mp-dep__route" data-route></span>
+            <div class="mp-dep__main">
+                <span class="mp-dep__sign" data-sign></span>
+                <span class="mp-dep__time" data-time></span>
+            </div>
+            <span class="mp-dep__eta" data-eta></span>
+            <svg class="mp-dep__caret" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="m6 9 6 6 6-6"></path>
+            </svg>
+        </button>
+        <div class="mp-dep__timeline" data-timeline hidden></div>
     </li>
 </template>
 {% endblock %}

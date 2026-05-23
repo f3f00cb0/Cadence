@@ -73,6 +73,8 @@ final class AreaDepartureAggregator
             'delaySeconds' => $d->delaySeconds,
             'tripId' => $d->tripId,
             'stopId' => $stopId,
+            'stopSequence' => $d->stopSequence,
+            'serviceDay' => $d->serviceDay->format('Y-m-d'),
         ];
     }
 
