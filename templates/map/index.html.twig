@@ -41,6 +41,20 @@
             </div>
         </header>
 
+        {# Hero — arrêt sélectionné (visible dès le peek state) #}
+        <section class="mp-hero" id="mp-hero" hidden aria-live="polite">
+            <header class="mp-hero__head">
+                <h2 class="mp-hero__name" id="mp-hero-name">—</h2>
+                <button type="button" class="mp-hero__close" id="mp-hero-close" aria-label="Désélectionner l'arrêt">
+                    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M18 6 6 18"></path>
+                        <path d="m6 6 12 12"></path>
+                    </svg>
+                </button>
+            </header>
+            <div class="mp-hero__chips" id="mp-hero-chips"></div>
+        </section>
+
         {# Recherche — primary call-to-action in peek state #}
         <section class="mp-search">
             <div class="mp-search__wrap" id="mp-search-wrap">

@@ -4,6 +4,16 @@
    ============================================================ */
 
 const SAINT_ETIENNE = [45.4397, 4.3872];
+
+/* Short signed-seconds tag for GTFS-RT delays: "+45s", "+2′", "−30s", or '' for negligible. */
+function formatDelayTag(delaySeconds) {
+    if (delaySeconds == null) return '';
+    const abs = Math.abs(delaySeconds);
+    if (abs < 30) return '';
+    const sign = delaySeconds >= 0 ? '+' : '−';
+    if (abs >= 60) return `${sign}${Math.round(abs / 60)}′`;
+    return `${sign}${abs}s`;
+}
 const CHIP_ZOOM_THRESHOLD = 16;          // ≥ ce zoom → chips détaillés, sinon dot
 const MOBILE_BREAKPOINT = '(max-width: 900px)';
 
@@ -168,17 +178,6 @@ function passesLayerFilter(area) {
     return false;
 }
 
-function dotMode(area) {
-    const modes = area.modes ?? [];
-    const hasTram = modes.includes('tram');
-    const hasBus  = modes.includes('bus') || modes.includes('trolley');
-    if (hasTram && hasBus) return 'multi';
-    if (hasTram) return 'tram';
-    if (modes.includes('trolley') && !modes.includes('bus')) return 'trolley';
-    if (hasBus) return 'bus';
-    return null;
-}
-
 function chipHtml(route) {
     const t = route.type;
     const cls = t === 'tram' ? 'mp-marker__chip--tram'
@@ -188,38 +187,59 @@ function chipHtml(route) {
     return `<span class="mp-marker__chip ${cls}">${escapeHtml(label)}</span>`;
 }
 
+function badgeHtml(modeClass, count) {
+    const label = count > 1 ? String(count) : '';
+    return `<span class="mp-marker__badge mp-marker__badge--${modeClass}">${label}</span>`;
+}
+
 function buildAreaIcon(area, zoom) {
-    const mode = dotMode(area);
-    if (!mode) return null;
-
-    if (zoom < CHIP_ZOOM_THRESHOLD) {
-        return L.divIcon({
-            className: 'mp-marker mp-marker--dot',
-            html: `<span class="mp-marker__dot mp-marker__dot--${mode}"></span>`,
-            iconSize: [16, 16],
-        });
-    }
-
+    const modes = area.modes ?? [];
     const routes = area.routes ?? [];
-    const MAX = 3;
-    const overflow = Math.max(0, routes.length - MAX);
-    let html = routes.slice(0, MAX).map(chipHtml).join('');
-    if (overflow > 0) {
-        html += `<span class="mp-marker__chip mp-marker__chip--more">+${overflow}</span>`;
-    }
-    // Si pas de routes, fallback dot
-    if (!html) {
+    const hasTram = modes.includes('tram');
+    const hasBus  = modes.includes('bus') || modes.includes('trolley');
+    if (!hasTram && !hasBus) return null;
+
+    // z14-15 : petit dot
+    if (zoom < CHIP_ZOOM_THRESHOLD) {
+        const dot = hasTram && hasBus ? 'multi'
+                  : hasTram ? 'tram'
+                  : modes.includes('trolley') && !modes.includes('bus') ? 'trolley'
+                  : 'bus';
         return L.divIcon({
             className: 'mp-marker mp-marker--dot',
-            html: `<span class="mp-marker__dot mp-marker__dot--${mode}"></span>`,
+            html: `<span class="mp-marker__dot mp-marker__dot--${dot}"></span>`,
             iconSize: [16, 16],
         });
     }
+
+    // z16+ : badge unique (ou paire si multi-mode)
+    let html = '';
+    if (hasTram && hasBus) {
+        // Multi-mode : badge tram + badge bus côte à côte (sans compteurs, gardé compact)
+        html = `${badgeHtml('tram', 0)}${badgeHtml('bus', 0)}`;
+    } else if (hasTram) {
+        const count = routes.filter(r => r.type === 'tram').length;
+        html = badgeHtml('tram', count);
+    } else {
+        // bus seul, ou trolley seul, ou mix bus+trolley → on consolide visuellement en "bus"
+        // mais on garde l'amber pour les trolleys purs
+        const busRoutes = routes.filter(r => r.type === 'bus' || r.type === 'trolley');
+        const onlyTrolley = busRoutes.every(r => r.type === 'trolley') && busRoutes.length > 0;
+        html = badgeHtml(onlyTrolley ? 'trolley' : 'bus', busRoutes.length);
+    }
+
     return L.divIcon({
         className: 'mp-marker',
         html,
         iconSize: null,
     });
+}
+
+function tooltipHtml(area) {
+    const routes = area.routes ?? [];
+    const chips = routes.map(chipHtml).join('');
+    return `<span class="mp-tt__name">${escapeHtml(area.name)}</span>`
+         + (chips ? `<div class="mp-tt__chips">${chips}</div>` : '');
 }
 
 /* ============================================================
@@ -437,17 +457,61 @@ async function refreshAreasInView() {
         const icon = buildAreaIcon(a, zoom);
         if (!icon) continue;
 
-        const lines = (a.routes ?? []).map(r => r.short_name).filter(Boolean).join(' · ');
-        const tooltip = lines ? `${a.name} — ${lines}` : a.name;
-
         const marker = L.marker([a.lat, a.lon], { icon })
-            .bindTooltip(tooltip, { direction: 'top', offset: [0, -8] });
+            .bindTooltip(tooltipHtml(a), {
+                direction: 'top',
+                offset: [0, -8],
+                className: 'mp-tt',
+                opacity: 1,
+            });
         marker.on('click', () => {
             loadDepartures(a);
             if (isMobile()) setSheetState('half');
         });
         state.areaLayer.addLayer(marker);
     }
+}
+
+/* ============================================================
+   Hero — arrêt sélectionné
+   ============================================================ */
+function showHero(area) {
+    const hero = document.getElementById('mp-hero');
+    const name = document.getElementById('mp-hero-name');
+    const chips = document.getElementById('mp-hero-chips');
+    if (!hero || !name || !chips) return;
+    name.textContent = area.name ?? '—';
+    chips.innerHTML = (area.routes ?? []).map(chipHtml).join('');
+    hero.hidden = false;
+}
+
+function clearHero() {
+    const hero = document.getElementById('mp-hero');
+    if (hero) hero.hidden = true;
+}
+
+function clearSelection() {
+    state.selectedArea = null;
+    clearTimeout(state.refreshTimer);
+
+    if (state.selectionMarker) {
+        state.map.removeLayer(state.selectionMarker);
+        state.selectionMarker = null;
+    }
+
+    clearHero();
+
+    const list = document.getElementById('board-list');
+    if (list) {
+        list.innerHTML = `
+            <li class="mp-board__empty">
+                <p class="mp-board__empty-title">La carte attend votre choix</p>
+                <p class="mp-board__empty-sub">Cliquez sur un arrêt ou utilisez la recherche pour voir les prochains passages.</p>
+            </li>`;
+    }
+    setBoardHint('— Sélectionnez un arrêt');
+
+    if (isMobile()) setSheetState('peek');
 }
 
 function setBoardHint(text, fresh = false) {
@@ -460,7 +524,8 @@ function setBoardHint(text, fresh = false) {
 async function loadDepartures(area) {
     state.selectedArea = area;
     setSelectionPin(area);
-    setBoardHint(`→ ${area.name}`, true);
+    showHero(area);
+    setBoardHint('LIVE · MAJ 30s', true);
     const list = document.getElementById('board-list');
     list.innerHTML = '<li class="mp-dep--loading">Chargement…</li>';
 
@@ -486,10 +551,17 @@ async function loadDepartures(area) {
         // On laisse la palette CSS appliquer le code STAS officiel,
         // les couleurs GTFS bizarres (orange tram, etc.) sont écrasées.
         li.querySelector('[data-sign]').textContent = d.direction_label ?? d.headsign ?? '';
-        li.querySelector('[data-time]').textContent = d.scheduledTime;
+        const timeEl = li.querySelector('[data-time]');
+        if (d.isRealtime && d.realtimeTime && d.realtimeTime !== d.scheduledTime) {
+            const tag = formatDelayTag(d.delaySeconds);
+            timeEl.innerHTML = `<s class="mp-dep__time-strike">${d.scheduledTime}</s> ${d.realtimeTime}${tag ? ' <span class="mp-dep__delay">' + tag + '</span>' : ''}`;
+        } else {
+            timeEl.textContent = d.scheduledTime;
+        }
         const eta = li.querySelector('[data-eta]');
         eta.textContent = d.minutesUntil === 0 ? 'à quai' : `${d.minutesUntil}′`;
         if (d.minutesUntil <= 3) eta.dataset.soon = 'true';
+        if (d.isRealtime) eta.dataset.rt = 'true';
         list.appendChild(li);
     }
 
@@ -638,6 +710,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initLayerToggles();
     initSheet();
     initGeolocation();
+    document.getElementById('mp-hero-close')?.addEventListener('click', clearSelection);
     refreshAreasInView();
     refreshVelivert();
     setInterval(refreshVelivert, 60_000);

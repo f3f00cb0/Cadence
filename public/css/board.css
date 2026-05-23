@@ -621,6 +621,35 @@ body {
     font-weight: 600;
 }
 
+/* GTFS-RT confirmed — pulsing green dot to the left of the ETA. */
+.dep__eta[data-rt="true"] {
+    position: relative;
+    padding-left: 14px;
+}
+.dep__eta[data-rt="true"]::before,
+.bd-dep__eta[data-rt="true"]::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    margin-top: -3.5px;
+    border-radius: 50%;
+    background: var(--asse-bright);
+    box-shadow: 0 0 0 0 var(--asse-glow);
+    animation: rt-pulse 1.8s var(--ease-in-out) infinite;
+}
+.bd-dep__eta[data-rt="true"] {
+    position: relative;
+    padding-left: 14px;
+}
+
+@keyframes rt-pulse {
+    0%, 100% { opacity: 1;   box-shadow: 0 0 0 0 var(--asse-glow); }
+    50%      { opacity: .55; box-shadow: 0 0 0 6px transparent; }
+}
+
 @keyframes blink-soft {
     0%, 100% { opacity: 1; }
     50%      { opacity: 0.55; }
@@ -1137,6 +1166,35 @@ body {
     font-size: 10.5px;
     color: var(--ink-faint);
     letter-spacing: 0.04em;
+}
+
+/* GTFS-RT: theoretical time crossed out + actual time + signed delay tag. */
+.bd-dep__time-strike {
+    color: var(--ink-faint);
+    text-decoration: line-through;
+    text-decoration-color: var(--ink-faint);
+    margin-right: 4px;
+    opacity: 0.7;
+}
+
+.bd-dep__delay {
+    color: var(--asse-bright);
+    font-weight: 600;
+    margin-left: 4px;
+}
+
+/* Same idiom for the map sidebar. */
+.mp-dep__time-strike {
+    color: var(--ink-faint);
+    text-decoration: line-through;
+    text-decoration-color: var(--ink-faint);
+    margin-right: 4px;
+    opacity: 0.7;
+}
+.mp-dep__delay {
+    color: var(--asse-bright);
+    font-weight: 600;
+    margin-left: 4px;
 }
 
 .bd-dep__eta {

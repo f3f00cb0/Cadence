@@ -201,8 +201,26 @@ function walkMinutes(distanceM) {
 function pad2(n) { return String(n).padStart(2, '0'); }
 
 function scheduledLabel(d) {
-    if (d.scheduledTime) return `${d.scheduledTime} · prévu`;
-    return '—';
+    if (!d.scheduledTime) return '—';
+    if (d.isRealtime) {
+        const tag = formatDelayTag(d.delaySeconds);
+        // "09:23 prévu · 09:24 live" or "09:23 · à l'heure"
+        if (d.realtimeTime && d.realtimeTime !== d.scheduledTime) {
+            return `${d.scheduledTime} prévu · ${d.realtimeTime} ${tag}`.trim();
+        }
+        return `${d.scheduledTime} · à l'heure`;
+    }
+    return `${d.scheduledTime} · prévu`;
+}
+
+/* Returns a short signed-seconds tag like "+45s", "+2′", "-30s" or empty for negligible. */
+function formatDelayTag(delaySeconds) {
+    if (delaySeconds == null) return '';
+    const abs = Math.abs(delaySeconds);
+    if (abs < 30) return '';
+    const sign = delaySeconds >= 0 ? '+' : '−';
+    if (abs >= 60) return `${sign}${Math.round(abs / 60)}′`;
+    return `${sign}${abs}s`;
 }
 
 function routeTypeAllowed(label) {
@@ -273,6 +291,7 @@ function buildAreaCard(area, departures, opts = {}) {
                 eta.innerHTML = `${minutes}<span class="dep__eta-unit">′</span>`;
                 if (minutes <= 3) eta.dataset.soon = 'true';
             }
+            if (d.isRealtime) eta.dataset.rt = 'true';
             depsContainer.appendChild(dep);
         }
     }
@@ -618,10 +637,17 @@ function renderSheetDeps(departures) {
         r.dataset.type = d.routeTypeLabel;
         if (d.routeColor) { r.style.background = d.routeColor; r.style.color = '#111'; }
         li.querySelector('[data-sign]').textContent = d.direction_label ?? d.headsign ?? '';
-        li.querySelector('[data-time]').textContent = d.scheduledTime;
+        const timeEl = li.querySelector('[data-time]');
+        if (d.isRealtime && d.realtimeTime && d.realtimeTime !== d.scheduledTime) {
+            const delayTag = formatDelayTag(d.delaySeconds);
+            timeEl.innerHTML = `<s class="bd-dep__time-strike">${d.scheduledTime}</s> ${d.realtimeTime}${delayTag ? ' <span class="bd-dep__delay">' + delayTag + '</span>' : ''}`;
+        } else {
+            timeEl.textContent = d.scheduledTime;
+        }
         const eta = li.querySelector('[data-eta]');
         eta.textContent = d.minutesUntil === 0 ? 'à quai' : `${d.minutesUntil}′`;
         if (d.minutesUntil <= 3) eta.dataset.soon = 'true';
+        if (d.isRealtime) eta.dataset.rt = 'true';
         list.appendChild(li);
         shown++;
     }

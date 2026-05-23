@@ -242,6 +242,78 @@ html, body {
 }
 
 /* ============================================================
+   Hero — arrêt sélectionné
+   ============================================================ */
+.mp-hero {
+    margin: 18px 22px 0;
+    padding: 16px 18px 14px;
+    background: linear-gradient(180deg, rgba(20, 160, 94, .08) 0%, var(--bg-elev-2) 60%);
+    border: 1px solid var(--rule);
+    border-left: 2px solid var(--asse-bright);
+    border-radius: 14px;
+    box-shadow: var(--shadow-overlay);
+    animation: mp-hero-in .35s var(--ease-spring);
+}
+
+.mp-hero[hidden] { display: none; }
+
+@keyframes mp-hero-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.mp-hero__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 12px;
+}
+
+.mp-hero__name {
+    margin: 0;
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 24px;
+    line-height: 1.1;
+    color: var(--ink-bright);
+    letter-spacing: -0.015em;
+    font-variation-settings: "opsz" 120, "SOFT" 50;
+    word-break: break-word;
+    flex: 1;
+    min-width: 0;
+}
+
+.mp-hero__close {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--bg-elev);
+    border: 1px solid var(--rule);
+    color: var(--ink-dim);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: color .15s var(--ease-out), border-color .15s var(--ease-out), background .15s var(--ease-out), transform .15s var(--ease-out);
+}
+
+.mp-hero__close:hover {
+    color: var(--ink);
+    border-color: var(--danger);
+    background: rgba(255, 74, 61, .08);
+}
+
+.mp-hero__close:active { transform: scale(.92); }
+
+.mp-hero__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+/* ============================================================
    Search
    ============================================================ */
 .mp-search {
@@ -519,6 +591,30 @@ html, body {
     animation: mp-blink-soft 1.6s var(--ease-in-out) infinite;
 }
 
+/* GTFS-RT confirmed — pulsing green dot to the left of the ETA. */
+.mp-dep__eta[data-rt="true"] {
+    position: relative;
+    padding-left: 14px;
+}
+.mp-dep__eta[data-rt="true"]::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    width: 7px;
+    height: 7px;
+    margin-top: -3.5px;
+    border-radius: 50%;
+    background: var(--asse-bright);
+    box-shadow: 0 0 0 0 var(--asse-glow);
+    animation: mp-rt-pulse 1.8s var(--ease-in-out) infinite;
+}
+
+@keyframes mp-rt-pulse {
+    0%, 100% { opacity: 1;   box-shadow: 0 0 0 0 var(--asse-glow); }
+    50%      { opacity: .55; box-shadow: 0 0 0 6px transparent; }
+}
+
 @keyframes mp-blink-soft {
     0%, 100% { opacity: 1; }
     50%      { opacity: .55; }
@@ -651,6 +747,46 @@ html, body {
 
 .leaflet-tooltip::before { display: none; }
 
+/* Tooltip riche pour les arrêts (nom + chips de lignes) */
+.leaflet-tooltip.mp-tt {
+    padding: 9px 11px !important;
+    font-family: var(--sans) !important;
+    font-size: 12px !important;
+    letter-spacing: 0 !important;
+    white-space: normal !important;
+    max-width: 240px;
+    text-align: left;
+}
+
+.mp-tt__name {
+    display: block;
+    font-family: var(--display);
+    font-size: 14.5px;
+    font-weight: 600;
+    color: var(--ink-bright);
+    margin-bottom: 8px;
+    letter-spacing: -0.01em;
+    line-height: 1.15;
+    font-variation-settings: "opsz" 120, "SOFT" 40;
+}
+
+.mp-tt__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.mp-tt__chips .mp-marker__chip {
+    min-width: 20px;
+    height: 20px;
+    font-size: 10.5px;
+    border-width: 1.5px;
+    box-shadow: none;
+}
+
+.mp-tt__chips .mp-marker__chip--tram { width: 20px; }
+.mp-tt__chips .mp-marker__chip--velivert { min-width: 22px; width: 22px; height: 22px; }
+
 /* Popup */
 .leaflet-popup-content-wrapper {
     background: var(--bg-elev-2);
@@ -711,7 +847,9 @@ html, body {
 }
 
 /* ============================================================
-   Marqueurs — chip-stack mode-aware
+   Marqueurs
+   - z14-15  : petit dot mode-coloré
+   - z16+    : badge unique avec compteur de lignes (ou paire pour multi-mode)
    ============================================================ */
 .mp-marker {
     background: transparent !important;
@@ -719,17 +857,17 @@ html, body {
     display: flex !important;
     align-items: center;
     justify-content: center;
-    gap: 3px;
+    gap: 2px;
     white-space: nowrap;
     pointer-events: auto;
 }
 
 .mp-marker--dot {
-    /* Variante zoom-out compacte (un seul pétage rond mode-coloré) */
     width: auto !important;
     height: auto !important;
 }
 
+/* Chip — utilisé hors marqueurs (hero card, tooltip, légende). */
 .mp-marker__chip {
     display: inline-flex;
     align-items: center;
@@ -742,9 +880,8 @@ html, body {
     font-size: 11px;
     letter-spacing: 0.01em;
     border: 2px solid #08090b;
-    box-shadow: 0 2px 6px -1px rgba(0,0,0,.55);
+    box-shadow: 0 2px 6px -1px rgba(0,0,0,.45);
     font-feature-settings: 'tnum' 1;
-    transition: transform .18s var(--ease-spring), box-shadow .18s var(--ease-out);
 }
 
 .mp-marker__chip--tram {
@@ -769,14 +906,6 @@ html, body {
     border-color: var(--bus);
 }
 
-.mp-marker__chip--more {
-    background: var(--bg-elev-3);
-    color: var(--ink-dim);
-    border-color: var(--rule);
-    border-radius: 6px;
-    font-size: 10px;
-}
-
 .mp-marker__chip--velivert {
     background: var(--velivert);
     color: var(--velivert-ink);
@@ -787,9 +916,48 @@ html, body {
     font-size: 11.5px;
 }
 
-.mp-marker:hover .mp-marker__chip { transform: scale(1.08); }
+/* Badge — marqueur compact mode-shaped */
+.mp-marker__badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 11.5px;
+    line-height: 1;
+    border: 2px solid #08090b;
+    box-shadow: 0 2px 6px -1px rgba(0,0,0,.55);
+    font-feature-settings: 'tnum' 1;
+    transition: transform .2s var(--ease-spring), box-shadow .2s var(--ease-out);
+}
 
-/* Variante dot — utilisée aux zooms bas (≤ 15) */
+.mp-marker__badge--tram {
+    background: var(--tram);
+    color: var(--tram-ink);
+    border-radius: 50%;
+}
+
+.mp-marker__badge--bus {
+    background: var(--bus);
+    color: var(--bus-ink);
+    border-radius: 6px;
+}
+
+.mp-marker__badge--trolley {
+    background: var(--trolley);
+    color: var(--trolley-ink);
+    border-radius: 6px;
+    border-color: var(--bus);
+}
+
+.mp-marker:hover .mp-marker__badge {
+    transform: scale(1.12);
+    box-shadow: 0 4px 12px -2px rgba(0,0,0,.7);
+}
+
+/* Variante dot — z14-15 */
 .mp-marker__dot {
     width: 11px;
     height: 11px;
@@ -1252,6 +1420,11 @@ html, body {
     .mp[data-sheet-state="full"] .mp-scrim { opacity: .65; pointer-events: auto; }
 
     /* Marqueurs un poil plus gros au touch */
+    .mp-marker__badge {
+        width: 26px;
+        height: 26px;
+        font-size: 12.5px;
+    }
     .mp-marker__chip {
         min-width: 24px;
         height: 24px;
@@ -1259,6 +1432,10 @@ html, body {
     }
     .mp-marker__chip--tram { width: 24px; }
     .mp-marker__chip--velivert { min-width: 30px; width: 30px; height: 30px; }
+
+    /* Hero plus compact en mobile */
+    .mp-hero { margin: 14px 22px 0; padding: 14px 16px 12px; }
+    .mp-hero__name { font-size: 22px; }
 }
 
 /* Très petits écrans : on rapproche les overlays */
