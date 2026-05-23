@@ -36,6 +36,11 @@ final class DepartureFinder
         $secondsNow = (int) $now->format('H') * 3600 + (int) $now->format('i') * 60 + (int) $now->format('s');
         $windowSeconds = $windowMinutes * 60;
 
+        // Over-fetch: RT can drop trips (cancellations, skipped stops), so we
+        // pull a few extras to still hit $limit after the merge. Capped to keep
+        // the static query cheap.
+        $fetchLimit = min($limit + 10, $limit * 2);
+
         // Today's services, looking forward in current day.
         $todayServices = $this->activeServices->resolveForDate($today);
         $todayResults = $this->stopTimes->findNextDepartures(
@@ -43,7 +48,7 @@ final class DepartureFinder
             $todayServices,
             $secondsNow,
             $secondsNow + $windowSeconds,
-            $limit,
+            $fetchLimit,
         );
 
         // Late-night trips that started yesterday but continue past midnight
@@ -55,7 +60,7 @@ final class DepartureFinder
             $yServices,
             $secondsNow + 86400,
             $secondsNow + 86400 + $windowSeconds,
-            $limit,
+            $fetchLimit,
         );
 
         $departures = [];

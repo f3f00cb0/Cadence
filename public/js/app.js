@@ -178,19 +178,38 @@ function passesLayerFilter(area) {
     return false;
 }
 
-function chipHtml(route) {
-    const t = route.type;
-    const cls = t === 'tram' ? 'mp-marker__chip--tram'
-              : t === 'trolley' ? 'mp-marker__chip--trolley'
-              : 'mp-marker__chip--bus';
-    const label = route.short_name ?? '·';
-    return `<span class="mp-marker__chip ${cls}">${escapeHtml(label)}</span>`;
+/** Inline style overriding chip colors with GTFS route color/text_color when present. */
+function gtfsColorStyle(route) {
+    const parts = [];
+    if (route.color)      parts.push(`background:#${route.color}`);
+    if (route.text_color) parts.push(`color:#${route.text_color}`);
+    return parts.length ? ` style="${parts.join(';')}"` : '';
 }
 
-function badgeHtml(modeClass, count) {
-    const label = count > 1 ? String(count) : '';
-    return `<span class="mp-marker__badge mp-marker__badge--${modeClass}">${label}</span>`;
+function chipClass(type) {
+    if (type === 'tram')    return 'mp-marker__chip--tram';
+    if (type === 'trolley') return 'mp-marker__chip--trolley';
+    return 'mp-marker__chip--bus';
 }
+
+function chipHtml(route) {
+    const label = route.short_name ?? '·';
+    return `<span class="mp-marker__chip ${chipClass(route.type)}"${gtfsColorStyle(route)}>${escapeHtml(label)}</span>`;
+}
+
+/** "Place du Peuple" → "PEUPLE", "Châteaucreux Gare" → "CHÂTEAUCREUX". Capped at 11 chars. */
+function abbreviateHubName(name) {
+    if (!name) return '';
+    const cleaned = name
+        .replace(/\s+(Gare|Station|Quai)\s*$/iu, '')
+        .replace(/^(Place|Rue|Avenue|Boulevard|Cours|Square)\s+(du|de la|de|des|d')\s+/iu, '')
+        .replace(/^(Place|Rue|Avenue|Boulevard|Cours|Square)\s+/iu, '');
+    const compact = cleaned.length <= 11 ? cleaned : cleaned.split(/\s+/).pop();
+    return (compact ?? cleaned).substring(0, 11).toUpperCase();
+}
+
+/* Seuil de bascule chips → pill hub : ≤ 3 lignes = chips détaillés, 4+ = hub. */
+const HUB_THRESHOLD = 4;
 
 function buildAreaIcon(area, zoom) {
     const modes = area.modes ?? [];
@@ -199,7 +218,7 @@ function buildAreaIcon(area, zoom) {
     const hasBus  = modes.includes('bus') || modes.includes('trolley');
     if (!hasTram && !hasBus) return null;
 
-    // z14-15 : petit dot
+    // z14-15 : petit dot mode-coloré (vue d'ensemble)
     if (zoom < CHIP_ZOOM_THRESHOLD) {
         const dot = hasTram && hasBus ? 'multi'
                   : hasTram ? 'tram'
@@ -212,24 +231,38 @@ function buildAreaIcon(area, zoom) {
         });
     }
 
-    // z16+ : badge unique (ou paire si multi-mode)
+    const transit = routes.filter(r => r.type === 'tram' || r.type === 'bus' || r.type === 'trolley');
+
+    // Tier 1 — peu de lignes : chips détaillés avec couleurs officielles
+    if (transit.length < HUB_THRESHOLD) {
+        return L.divIcon({
+            className: 'mp-marker mp-marker--chips',
+            html: transit.map(chipHtml).join(''),
+            iconSize: null,
+        });
+    }
+
+    // Tier 2 — hub (4+ lignes) : on garde les chips tram (toujours uniques et identifiables)
+    // et on consolide les bus en compteur. Si bus-only, on affiche le nom abrégé + total.
+    const trams = transit.filter(r => r.type === 'tram');
+    const buses = transit.filter(r => r.type === 'bus' || r.type === 'trolley');
+    const onlyTrolley = buses.length > 0 && buses.every(r => r.type === 'trolley');
+    const busBadgeCls = onlyTrolley ? 'mp-marker__hub-count--trolley' : 'mp-marker__hub-count--bus';
+
     let html = '';
-    if (hasTram && hasBus) {
-        // Multi-mode : badge tram + badge bus côte à côte (sans compteurs, gardé compact)
-        html = `${badgeHtml('tram', 0)}${badgeHtml('bus', 0)}`;
-    } else if (hasTram) {
-        const count = routes.filter(r => r.type === 'tram').length;
-        html = badgeHtml('tram', count);
+    if (trams.length > 0) {
+        html += trams.map(chipHtml).join('');
+        if (buses.length > 0) {
+            html += `<span class="mp-marker__hub-count ${busBadgeCls}">+${buses.length}</span>`;
+        }
     } else {
-        // bus seul, ou trolley seul, ou mix bus+trolley → on consolide visuellement en "bus"
-        // mais on garde l'amber pour les trolleys purs
-        const busRoutes = routes.filter(r => r.type === 'bus' || r.type === 'trolley');
-        const onlyTrolley = busRoutes.every(r => r.type === 'trolley') && busRoutes.length > 0;
-        html = badgeHtml(onlyTrolley ? 'trolley' : 'bus', busRoutes.length);
+        // Bus-only hub : nom + compteur
+        html = `<span class="mp-marker__hub-name">${escapeHtml(abbreviateHubName(area.name))}</span>`
+             + `<span class="mp-marker__hub-count ${busBadgeCls}">${buses.length}</span>`;
     }
 
     return L.divIcon({
-        className: 'mp-marker',
+        className: 'mp-marker mp-marker--hub',
         html,
         iconSize: null,
     });

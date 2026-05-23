@@ -916,45 +916,74 @@ html, body {
     font-size: 11.5px;
 }
 
-/* Badge — marqueur compact mode-shaped */
-.mp-marker__badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    font-family: var(--mono);
-    font-weight: 700;
-    font-size: 11.5px;
-    line-height: 1;
-    border: 2px solid #08090b;
-    box-shadow: 0 2px 6px -1px rgba(0,0,0,.55);
-    font-feature-settings: 'tnum' 1;
+/* ============================================================
+   Hub — pill compacte pour les arrêts à 4+ lignes
+   - Multi-mode (tram + bus) : chips trams + compteur "+N" bus
+   - Bus-only : nom abrégé + compteur
+   ============================================================ */
+.mp-marker--hub {
+    background: rgba(8, 9, 11, .92) !important;
+    border: 1px solid var(--rule) !important;
+    border-radius: 8px !important;
+    padding: 2px 5px !important;
+    gap: 4px !important;
+    box-shadow: 0 4px 12px -3px rgba(0,0,0,.7);
+    backdrop-filter: blur(4px);
     transition: transform .2s var(--ease-spring), box-shadow .2s var(--ease-out);
 }
 
-.mp-marker__badge--tram {
-    background: var(--tram);
-    color: var(--tram-ink);
-    border-radius: 50%;
+.mp-marker--hub:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px -3px rgba(0,0,0,.85);
+    border-color: var(--ink-faint);
 }
 
-.mp-marker__badge--bus {
+.mp-marker__hub-name {
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 9.5px;
+    letter-spacing: 0.06em;
+    color: var(--ink);
+    padding: 0 2px;
+    white-space: nowrap;
+}
+
+.mp-marker__hub-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 18px;
+    padding: 0 5px;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 10.5px;
+    line-height: 1;
+    border-radius: 5px;
+    font-feature-settings: 'tnum' 1;
+}
+
+.mp-marker__hub-count--bus {
     background: var(--bus);
     color: var(--bus-ink);
-    border-radius: 6px;
 }
 
-.mp-marker__badge--trolley {
+.mp-marker__hub-count--trolley {
     background: var(--trolley);
     color: var(--trolley-ink);
-    border-radius: 6px;
-    border-color: var(--bus);
 }
 
-.mp-marker:hover .mp-marker__badge {
-    transform: scale(1.12);
-    box-shadow: 0 4px 12px -2px rgba(0,0,0,.7);
+/* Chips dans une hub pill : un peu plus compacts pour tenir côte-à-côte */
+.mp-marker--hub .mp-marker__chip {
+    height: 18px;
+    min-width: 18px;
+    font-size: 10px;
+    border-width: 1.5px;
+}
+
+.mp-marker--hub .mp-marker__chip--tram {
+    width: 18px;
+    min-width: 18px;
 }
 
 /* Variante dot — z14-15 */
@@ -1420,11 +1449,6 @@ html, body {
     .mp[data-sheet-state="full"] .mp-scrim { opacity: .65; pointer-events: auto; }
 
     /* Marqueurs un poil plus gros au touch */
-    .mp-marker__badge {
-        width: 26px;
-        height: 26px;
-        font-size: 12.5px;
-    }
     .mp-marker__chip {
         min-width: 24px;
         height: 24px;
@@ -1432,6 +1456,14 @@ html, body {
     }
     .mp-marker__chip--tram { width: 24px; }
     .mp-marker__chip--velivert { min-width: 30px; width: 30px; height: 30px; }
+    .mp-marker--hub .mp-marker__chip {
+        height: 20px;
+        min-width: 20px;
+        font-size: 10.5px;
+    }
+    .mp-marker--hub .mp-marker__chip--tram { width: 20px; min-width: 20px; }
+    .mp-marker__hub-name { font-size: 10.5px; }
+    .mp-marker__hub-count { min-width: 22px; height: 20px; font-size: 11px; }
 
     /* Hero plus compact en mobile */
     .mp-hero { margin: 14px 22px 0; padding: 14px 16px 12px; }

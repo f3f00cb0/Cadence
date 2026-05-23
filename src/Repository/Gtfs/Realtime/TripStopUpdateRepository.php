@@ -57,10 +57,17 @@ class TripStopUpdateRepository extends ServiceEntityRepository
                     $params[] = $row->stopSequence;
                     $params[] = $row->delaySeconds;
                     $params[] = $row->scheduleRelationship;
-                    $params[] = $row->tripCanceled ? 'true' : 'false';
-                    $types = []; // let DBAL infer
+                    $params[] = $row->tripCanceled;
+                    // Last column is BOOLEAN — force the type so DBAL doesn't
+                    // serialize it as the literal string "1"/"".
+                    array_push(
+                        $types,
+                        \PDO::PARAM_STR, \PDO::PARAM_STR, \PDO::PARAM_STR,
+                        \PDO::PARAM_STR, \PDO::PARAM_INT, \PDO::PARAM_INT,
+                        \PDO::PARAM_INT, \PDO::PARAM_BOOL,
+                    );
                 }
-                $this->conn->executeStatement($sql . implode(',', $placeholders), $params);
+                $this->conn->executeStatement($sql . implode(',', $placeholders), $params, $types);
             }
 
             $this->conn->commit();
