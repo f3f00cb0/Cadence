@@ -8,6 +8,7 @@ use App\Entity\Gtfs\Realtime\TripStopUpdate;
 use App\Service\Gtfs\Realtime\TripStopUpdateRow;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\DBAL\Connection;
+use Doctrine\DBAL\ParameterType;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -62,9 +63,9 @@ class TripStopUpdateRepository extends ServiceEntityRepository
                     // serialize it as the literal string "1"/"".
                     array_push(
                         $types,
-                        \PDO::PARAM_STR, \PDO::PARAM_STR, \PDO::PARAM_STR,
-                        \PDO::PARAM_STR, \PDO::PARAM_INT, \PDO::PARAM_INT,
-                        \PDO::PARAM_INT, \PDO::PARAM_BOOL,
+                        ParameterType::STRING, ParameterType::STRING, ParameterType::STRING,
+                        ParameterType::STRING, ParameterType::INTEGER, ParameterType::INTEGER,
+                        ParameterType::INTEGER, ParameterType::BOOLEAN,
                     );
                 }
                 $this->conn->executeStatement($sql . implode(',', $placeholders), $params, $types);
