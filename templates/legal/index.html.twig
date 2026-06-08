@@ -1,0 +1,204 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mentions légales & confidentialité · Furan{% endblock %}
+
+{% block stylesheets %}
+<meta name="theme-color" content="#0b0c0d">
+<meta name="robots" content="index, follow">
+<style>
+    .legal {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 40px 22px 80px;
+    }
+    .legal__back {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--ink-dim);
+        text-decoration: none;
+        font-family: var(--mono);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-bottom: 32px;
+    }
+    .legal__back:hover { color: var(--ink); }
+    .legal h1 {
+        font-family: var(--display);
+        font-weight: 600;
+        font-size: clamp(30px, 7vw, 46px);
+        line-height: 1.05;
+        margin: 0 0 8px;
+    }
+    .legal__updated {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--ink-dim);
+        margin: 0 0 40px;
+    }
+    .legal h2 {
+        font-family: var(--display);
+        font-weight: 600;
+        font-size: 22px;
+        margin: 40px 0 14px;
+        padding-top: 24px;
+        border-top: 1px solid var(--rule);
+    }
+    .legal h3 {
+        font-family: var(--mono);
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--amber);
+        margin: 22px 0 8px;
+    }
+    .legal p, .legal li {
+        font-family: var(--mono);
+        font-size: 15px;
+        line-height: 1.7;
+        color: var(--ink);
+    }
+    .legal p { margin: 0 0 14px; }
+    .legal ul { margin: 0 0 14px; padding-left: 22px; }
+    .legal li { margin-bottom: 6px; }
+    .legal a { color: var(--amber-bright); }
+    .legal strong { color: var(--ink); }
+    .legal__lead {
+        color: var(--ink-dim) !important;
+        font-size: 16px !important;
+    }
+    /* Repère bien visible des infos légales à renseigner avant publication. */
+    .legal__todo {
+        background: var(--amber);
+        color: #111;
+        font-weight: 700;
+        padding: 1px 7px;
+        border-radius: 4px;
+    }
+    .legal__note {
+        background: var(--bg-elev);
+        border: 1px solid var(--rule);
+        border-left: 3px solid var(--bike-green);
+        border-radius: 10px;
+        padding: 16px 18px;
+        margin: 0 0 14px;
+    }
+    .legal__note p:last-child { margin-bottom: 0; }
+</style>
+{% endblock %}
+
+{% block body %}
+<main class="legal">
+    <a class="legal__back" href="{{ path('home') }}">← Retour</a>
+
+    <h1>Mentions légales &amp; confidentialité</h1>
+    <p class="legal__updated">Dernière mise à jour : 8 juin 2026 · furan.run</p>
+
+    <p class="legal__lead">
+        Furan est un service indépendant qui agrège les données ouvertes des
+        transports stéphanois (réseau STAS, vélos Vélivert). Il n'est affilié ni
+        à la STAS, ni à Vélivert, ni à Saint-Étienne Métropole.
+    </p>
+
+    {# ============================================================ #}
+    <h2>1. Éditeur du site</h2>
+    <p>
+        <strong>Furan</strong> est édité par Mathieu Mont, particulier, à titre
+        personnel et non commercial.<br>
+        Contact : <a href="mailto:mathieumont.m@gmail.com">mathieumont.m@gmail.com</a><br>
+        Directeur de la publication : Mathieu Mont.
+    </p>
+
+    {# ============================================================ #}
+    <h2>2. Hébergement</h2>
+    <p>
+        Le site est hébergé par <strong>Hetzner Online GmbH</strong><br>
+        Industriestr. 25, 91710 Gunzenhausen, Allemagne<br>
+        Téléphone : +49 (0)9831 505-0 ·
+        <a href="https://www.hetzner.com" target="_blank" rel="noopener">hetzner.com</a>
+    </p>
+
+    {# ============================================================ #}
+    <h2>3. Données personnelles &amp; vie privée</h2>
+
+    <div class="legal__note">
+        <p>
+            <strong>En résumé :</strong> Furan ne crée aucun compte, ne dépose
+            aucun cookie, n'utilise aucun traceur publicitaire ni outil de mesure
+            d'audience. Vos favoris et réglages restent sur votre appareil.
+        </p>
+    </div>
+
+    <h3>Géolocalisation</h3>
+    <p>
+        Si vous l'autorisez, votre position est lue par le navigateur uniquement
+        pour calculer les arrêts et stations les plus proches. Elle est utilisée
+        <strong>sur votre appareil</strong>, le temps de la requête, et
+        <strong>n'est jamais enregistrée</strong> sur nos serveurs. Vous pouvez
+        refuser ou révoquer cette autorisation à tout moment dans votre navigateur ;
+        l'application fonctionne alors depuis le centre de Saint-Étienne ou une
+        adresse saisie manuellement.
+    </p>
+
+    <h3>Stockage local (favoris &amp; réglages)</h3>
+    <p>
+        Vos arrêts favoris et vos préférences d'affichage sont enregistrés dans le
+        <em>localStorage</em> de votre navigateur (clés <code>mobilite.favorites.v1</code>
+        et <code>mobilite.settings.v1</code>). Ces données ne quittent jamais votre
+        appareil et ne nous sont pas transmises. Vous pouvez les effacer depuis les
+        réglages de l'application ou en vidant les données de site de votre navigateur.
+    </p>
+
+    <h3>Service tiers — géocodage</h3>
+    <p>
+        Lorsque vous saisissez une adresse au lieu d'utiliser la géolocalisation,
+        la requête est envoyée à <strong>Nominatim</strong>, le service de géocodage
+        d'OpenStreetMap, qui reçoit alors votre adresse IP et le texte recherché.
+        Consultez la
+        <a href="https://wiki.osmfoundation.org/wiki/Privacy_Policy" target="_blank" rel="noopener">politique de confidentialité de l'OpenStreetMap Foundation</a>.
+    </p>
+
+    <h3>Journaux serveur</h3>
+    <p>
+        Pour des raisons techniques et de sécurité, l'hébergeur peut conserver
+        temporairement des journaux de connexion (adresse IP, date, page demandée).
+        Ils ne sont pas exploités à des fins de profilage.
+    </p>
+
+    <h3>Vos droits (RGPD)</h3>
+    <p>
+        Furan ne constituant aucun fichier de données personnelles côté serveur,
+        il n'y a pas de profil à consulter, rectifier ou supprimer chez nous. Pour
+        toute question relative à vos données, écrivez à
+        <a href="mailto:mathieumont.m@gmail.com">mathieumont.m@gmail.com</a>.
+        Vous pouvez également saisir la
+        <a href="https://www.cnil.fr" target="_blank" rel="noopener">CNIL</a>.
+    </p>
+
+    {# ============================================================ #}
+    <h2>4. Sources de données &amp; licences</h2>
+    <p>
+        Les horaires théoriques et temps réel (GTFS / GTFS-RT) du réseau STAS et
+        l'état des stations Vélivert (GBFS) proviennent de l'<strong>open data de
+        Saint-Étienne Métropole</strong>, diffusé sous
+        <a href="https://www.etalab.gouv.fr/licence-ouverte-open-licence/" target="_blank" rel="noopener">Licence Ouverte 2.0 (Etalab)</a>.
+        Le fond cartographique est fourni par <strong>OpenStreetMap</strong>
+        (© les contributeurs OpenStreetMap, sous licence ODbL).
+    </p>
+    <p>
+        Le code source de Furan est distribué sous licence <strong>MIT</strong>.
+        Les données affichées sont fournies « en l'état », sans garantie
+        d'exactitude ni de disponibilité ; elles ne sauraient engager la
+        responsabilité de l'éditeur en cas de retard, d'erreur ou d'interruption.
+    </p>
+
+    {# ============================================================ #}
+    <h2>5. Propriété intellectuelle</h2>
+    <p>
+        Les marques « STAS », « Vélivert » et « Saint-Étienne Métropole », ainsi
+        que leurs logos, demeurent la propriété de leurs titulaires respectifs.
+        Furan n'en revendique aucun droit et les cite à seule fin d'information.
+    </p>
+</main>
+{% endblock %}

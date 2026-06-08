@@ -75,17 +75,31 @@
   « aucune donnée », les favoris restent visibles hors-ligne, et le bandeau
   ne ment plus (« TEMPS RÉEL » seulement si une section a vraiment rafraîchi).
   *Fichiers : `public/js/board.js`, `public/css/board.css`.*
-- [ ] 🔴 **Service worker minimal** — au moins app-shell + derniers départs en
-  cache. Une PWA de transport sans offline (tunnel, sous-sol, signal faible),
-  c'est le reproche n°1 des early adopters. *Nouveau : `public/sw.js` + enregistrement.*
-- [ ] 🟠 **Auto-héberger fonts + Leaflet** — Google Fonts = sujet RGPD en EU, et
-  les CDN tiers (unpkg, fonts.gstatic) cassent l'app si bloqués/lents. Servir en
-  local. *Fichiers : `templates/base.html.twig`, `templates/*/index.html.twig`.*
-- [ ] 🟠 **Retirer Leaflet de la page board (`/`)** — chargé via `base.html.twig`
-  sur toutes les pages alors que le board n'a pas de carte (~150 Ko gaspillés sur
-  le chemin le plus chaud). Déplacer Leaflet dans le seul template `map`.
-- [ ] 🟠 **Page mentions légales / vie privée** — géoloc + appels Nominatim →
-  obligation EU. (L'attribution open data Etalab est déjà dans le footer ✅.)
+- [x] ✅ **Service worker** — `public/sw.js` : app-shell network-first (le board
+  charge hors-ligne), API GET network-first avec fallback dernière réponse cachée
+  (derniers départs connus), assets/fonts/Leaflet en stale-while-revalidate.
+  Enregistré **en prod uniquement** via `base.html.twig`. *Limite connue :
+  `batch-departures` est en POST → non cachable par la Cache API (les noms
+  d'arrêts proches restent dispo via le GET `/api/areas/nearby`).*
+- [x] ✅ **Auto-héberger les fonts** — Fraunces / Inter / JetBrains Mono (variables,
+  sous-ensembles latin + latin-ext, italiques inclus) téléchargées dans
+  `public/fonts/` (~489 Ko, 10 woff2) + `public/css/fonts.css` chargé par
+  `base.html.twig`. **Zéro requête vers Google** → RGPD réglé, plus de dépendance
+  CDN pour le texte. *Au passage : l'ancienne URL Fraunces des templates était
+  malformée (3 axes / 2 valeurs) → Google la rejetait, Fraunces tombait en
+  fallback serif. Corrigé.*
+- [ ] 🟡 **Auto-héberger Leaflet** (reste sur unpkg) — moins critique (chargé sur
+  la seule page carte, avec SRI), mais à faire pour zéro CDN tiers.
+  *Fichiers : `templates/map/index.html.twig`.*
+- [x] ✅ **Retirer Leaflet de la page board (`/`)** — sorti de `base.html.twig`,
+  déplacé dans le seul template `map` (CSS + JS avant `app.js`). Le board ne
+  charge plus ~150 Ko de Leaflet inutile sur le chemin le plus chaud.
+- [x] ✅ **Page mentions légales / vie privée** — `/mentions-legales`
+  (`LegalController` + `templates/legal/index.html.twig`), liée depuis les footers
+  board + carte. Couvre éditeur (Mathieu Mont, particulier non commercial),
+  hébergeur (Hetzner Online GmbH), RGPD (géoloc non stockée, localStorage,
+  Nominatim, journaux), sources open data + licences. Aucun placeholder restant.
+  Au passage, le label statique trompeur « TEMPS RÉEL » du footer board a été retiré.
 - [ ] 🟡 **Décider du sort des identifiants d'infra** (DB/GHCR/monolog/localStorage)
   — soit on assume `Furan` partout avec migrations (rename image GHCR + reconfig
   Dokploy, migration localStorage `mobilite.* → furan.*`), soit on garde tel quel.

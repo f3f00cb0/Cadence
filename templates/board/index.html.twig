@@ -3,9 +3,7 @@
 {% block title %}Furan · Transports Saint-Étienne{% endblock %}
 
 {% block stylesheets %}
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,400;9..144,500;9..144,600;9..144,800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+{# Polices auto-hébergées chargées par base.html.twig (css/fonts.css). #}
 <link rel="stylesheet" href="{{ asset('css/board.css') }}">
 <meta name="theme-color" content="#08090b">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -149,7 +147,7 @@
                 <span class="foot__sep">·</span>
                 GTFS · GBFS
                 <span class="foot__sep">·</span>
-                TEMPS RÉEL
+                <a class="foot__legal" href="{{ path('legal') }}">Mentions légales</a>
             </span>
         </footer>
 

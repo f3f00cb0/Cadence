@@ -810,6 +810,19 @@ html, body {
     opacity: 0.6;
 }
 
+.mp-foot__legal {
+    color: var(--ink-dim);
+    text-decoration: none;
+    border-bottom: 1px solid var(--rule);
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.mp-foot__legal:hover,
+.mp-foot__legal:focus-visible {
+    color: var(--ink);
+    border-color: var(--ink-dim);
+}
+
 /* ============================================================
    Carte
    ============================================================ */
