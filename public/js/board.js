@@ -18,6 +18,29 @@ const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
 }[c]));
 
+/* Picks black or white text for a route badge based on the line's background
+   luminance, so a dark feed color (e.g. navy) doesn't get unreadable near-black
+   text. Returns '#111' on light backgrounds, '#fff' on dark ones (WCAG-ish). */
+function readableTextColor(hex) {
+    if (typeof hex !== 'string') return '#111';
+    const m = hex.replace('#', '');
+    if (m.length < 6) return '#111';
+    const r = parseInt(m.slice(0, 2), 16);
+    const g = parseInt(m.slice(2, 4), 16);
+    const b = parseInt(m.slice(4, 6), 16);
+    // Relative luminance (sRGB, linearized).
+    const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+    const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    return L > 0.45 ? '#111' : '#fff';
+}
+
+/* Applies a route's color to a badge element with readable text. */
+function paintRouteBadge(el, color) {
+    if (!color) return;
+    el.style.background = color;
+    el.style.color = readableTextColor(color);
+}
+
 /* Returns a walking-directions URL: Apple Maps on iOS, Google Maps elsewhere.
    Both are universal links that open the native app when installed. */
 function directionsUrl(lat, lon, label) {
@@ -276,7 +299,7 @@ function buildAreaCard(area, departures, opts = {}) {
             const r = dep.querySelector('[data-route]');
             r.textContent = d.routeShortName ?? '·';
             r.dataset.type = d.routeTypeLabel;
-            if (d.routeColor) { r.style.background = d.routeColor; r.style.color = '#111'; }
+            paintRouteBadge(r, d.routeColor);
 
             const sign = dep.querySelector('[data-sign]');
             sign.textContent = d.direction_label ?? d.headsign ?? '';
@@ -521,10 +544,12 @@ function initSearch() {
     const closeDropdown = () => {
         results.hidden = true;
         results.innerHTML = '';
+        input.setAttribute('aria-expanded', 'false');
     };
 
     const renderResults = (items) => {
         results.innerHTML = '';
+        input.setAttribute('aria-expanded', 'true');
         if (items.length === 0) {
             const empty = document.createElement('li');
             empty.className = 'search__empty';
@@ -656,13 +681,39 @@ function updateGeoCtaVisibility() {
     cta.hidden = state.position?.source === 'geoloc';
 }
 
+/* ---------- Sheet a11y : focus entrant, piège de focus, retour focus ----------
+   Les sheets sont des dialogues modaux. On rend l'arrière-plan `inert` (ni
+   focusable, ni lu par les lecteurs d'écran), on déplace le focus dans le
+   dialogue, et on le restitue à l'élément déclencheur à la fermeture. */
+let lastFocusedBeforeSheet = null;
+
+function focusablesIn(container) {
+    return [...container.querySelectorAll(
+        'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )].filter((el) => el.offsetWidth > 0 || el.offsetHeight > 0 || el === document.activeElement);
+}
+
+function showSheet(sheet) {
+    lastFocusedBeforeSheet = document.activeElement;
+    sheet.hidden = false;
+    document.body.style.overflow = 'hidden';
+
+    // Tout sauf la sheet ouverte devient inert (arrière-plan + autres sheets).
+    const root = $('bd-root');
+    if (root) root.inert = true;
+    document.querySelectorAll('.bd-sheet').forEach((s) => { s.inert = (s !== sheet); });
+
+    // Focus sur le panneau (aria-labelledby annonce le titre au lecteur d'écran).
+    const panel = sheet.querySelector('.bd-sheet__panel') ?? sheet;
+    requestAnimationFrame(() => panel.focus());
+}
+
 /* ---------- Sheet: area detail ---------- */
 async function openAreaSheet(area) {
     state.sheetArea = area;
     state.sheetFilter = 'all';
     const sheet = $('bd-sheet-area');
-    sheet.hidden = false;
-    document.body.style.overflow = 'hidden';
+    showSheet(sheet);
 
     $('bd-sheet-title').textContent = area.name;
     $('bd-area-go').href = directionsUrl(area.lat, area.lon, area.name);
@@ -695,7 +746,7 @@ function renderSheetDeps(departures) {
         const r = li.querySelector('[data-route]');
         r.textContent = d.routeShortName ?? '·';
         r.dataset.type = d.routeTypeLabel;
-        if (d.routeColor) { r.style.background = d.routeColor; r.style.color = '#111'; }
+        paintRouteBadge(r, d.routeColor);
         li.querySelector('[data-sign]').textContent = d.direction_label ?? d.headsign ?? '';
         const timeEl = li.querySelector('[data-time]');
         if (d.isRealtime && d.realtimeTime && d.realtimeTime !== d.scheduledTime) {
@@ -787,8 +838,7 @@ $('bd-fav-btn')?.addEventListener('click', () => {
 /* ---------- Velivert sheet ---------- */
 function openVelivertSheet(s) {
     const sheet = $('bd-sheet-velivert');
-    sheet.hidden = false;
-    document.body.style.overflow = 'hidden';
+    showSheet(sheet);
     $('bd-sheet-velivert-title').textContent = s.name;
     $('bd-velivert-body').innerHTML = `
         <div class="bd-sheet__row"><span>Vélos disponibles</span><strong>${s.bikes}</strong></div>
@@ -807,12 +857,42 @@ document.querySelectorAll('[data-sheet-close]').forEach(el => {
 });
 
 function closeAllSheets() {
-    document.querySelectorAll('.bd-sheet').forEach(s => s.hidden = true);
+    const wasOpen = document.querySelector('.bd-sheet:not([hidden])');
+    document.querySelectorAll('.bd-sheet').forEach((s) => { s.hidden = true; s.inert = false; });
     document.body.style.overflow = '';
+    const root = $('bd-root');
+    if (root) root.inert = false;
+
+    // Restitue le focus au déclencheur (carte, chip, station…).
+    if (wasOpen && lastFocusedBeforeSheet && typeof lastFocusedBeforeSheet.focus === 'function') {
+        lastFocusedBeforeSheet.focus();
+    }
+    lastFocusedBeforeSheet = null;
 }
 
 document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') closeAllSheets();
+    const openSheet = document.querySelector('.bd-sheet:not([hidden])');
+    if (!openSheet) return;
+
+    if (e.key === 'Escape') {
+        closeAllSheets();
+        return;
+    }
+    // Piège de focus : Tab/Shift+Tab boucle à l'intérieur du dialogue ouvert.
+    if (e.key === 'Tab') {
+        const f = focusablesIn(openSheet);
+        if (f.length === 0) return;
+        const first = f[0];
+        const last = f[f.length - 1];
+        const active = document.activeElement;
+        if (e.shiftKey && (active === first || active === openSheet.querySelector('.bd-sheet__panel'))) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && active === last) {
+            e.preventDefault();
+            first.focus();
+        }
+    }
 });
 
 /* ---------- Pull-to-refresh ---------- */

@@ -18,8 +18,8 @@ class StopAreaRepository extends ServiceEntityRepository
     public function searchByName(string $term, int $limit = 20): array
     {
         return $this->createQueryBuilder('a')
-            ->where('LOWER(a.name) LIKE :term')
-            ->setParameter('term', '%' . strtolower($term) . '%')
+            ->where('UNACCENT(LOWER(a.name)) LIKE UNACCENT(LOWER(:term))')
+            ->setParameter('term', '%' . $term . '%')
             ->orderBy('a.name', 'ASC')
             ->setMaxResults($limit)
             ->getQuery()

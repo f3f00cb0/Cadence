@@ -18,7 +18,7 @@
     --ink:          #f2efe8;
     --ink-bright:   #ffffff;
     --ink-dim:      #93897c;
-    --ink-faint:    #5e574e;
+    --ink-faint:    #8b8275;   /* AA ≥4.5:1 sur bg/elev/elev-2 (ex-#5e574e ~2.6:1) */
 
     /* identité Saint-Étienne */
     --asse:         #00733f;          /* vert sapin ASSE */
@@ -658,14 +658,14 @@ body {
 /* Empty state inside card — proper inline message instead of broken word-wrap */
 .dep--empty {
     grid-template-columns: 1fr;
-    padding: 22px 4px;
+    padding: 9px 4px;
     text-align: center;
 }
 
 .dep--empty .dep__msg {
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.04em;
+    font-family: var(--sans);
+    font-size: 12px;
+    letter-spacing: 0;
     color: var(--ink-faint);
     font-style: italic;
 }

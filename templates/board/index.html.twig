@@ -13,6 +13,7 @@
 {% endblock %}
 
 {% block body %}
+<h1 class="visually-hidden">Furan — prochains passages STAS et stations Vélivert en temps réel à Saint-Étienne</h1>
 <div class="bd" id="bd-root">
 
     {# ============================================================
@@ -45,7 +46,7 @@
                 <circle cx="11" cy="11" r="7"></circle>
                 <path d="m21 21-4.3-4.3"></path>
             </svg>
-            <input class="search__input" id="bd-search-input" type="search" placeholder="Châteaucreux, Hôtel de Ville, Bellevue…" autocomplete="off" enterkeyhint="search">
+            <input class="search__input" id="bd-search-input" type="search" placeholder="Châteaucreux, Hôtel de Ville, Bellevue…" autocomplete="off" enterkeyhint="search" role="combobox" aria-expanded="false" aria-controls="bd-search-results" aria-autocomplete="list" aria-label="Rechercher un arrêt">
             <button class="search__clear" id="bd-search-clear" type="button" aria-label="Effacer">✕</button>
         </div>
         <ul class="search__results" id="bd-search-results" hidden role="listbox"></ul>
@@ -158,7 +159,7 @@
 {# --- Sheet: Arrêt detail --- #}
 <div class="bd-sheet" id="bd-sheet-area" hidden role="dialog" aria-modal="true" aria-labelledby="bd-sheet-title">
     <div class="bd-sheet__scrim" data-sheet-close></div>
-    <div class="bd-sheet__panel">
+    <div class="bd-sheet__panel" tabindex="-1">
         <div class="bd-sheet__handle"></div>
         <header class="bd-sheet__head">
             <h3 class="bd-sheet__title" id="bd-sheet-title">—</h3>
@@ -185,7 +186,7 @@
 {# --- Sheet: Vélivert detail --- #}
 <div class="bd-sheet" id="bd-sheet-velivert" hidden role="dialog" aria-modal="true" aria-labelledby="bd-sheet-velivert-title">
     <div class="bd-sheet__scrim" data-sheet-close></div>
-    <div class="bd-sheet__panel">
+    <div class="bd-sheet__panel" tabindex="-1">
         <div class="bd-sheet__handle"></div>
         <header class="bd-sheet__head">
             <h3 class="bd-sheet__title" id="bd-sheet-velivert-title">—</h3>

@@ -103,10 +103,28 @@
 - [ ] 🟡 **Décider du sort des identifiants d'infra** (DB/GHCR/monolog/localStorage)
   — soit on assume `Furan` partout avec migrations (rename image GHCR + reconfig
   Dokploy, migration localStorage `mobilite.* → furan.*`), soit on garde tel quel.
-- [ ] 🟡 **Audit accessibilité** (axe-core / Lighthouse) — vérifier piège de focus
-  dans les sheets et contraste AA des badges de ligne sur thème sombre.
-- [ ] 🟡 **Report d'erreurs (Sentry)** — sans ça, impossible de savoir qu'un user
-  tombe sur des écrans vides en prod.
+- [x] ✅ **Audit accessibilité** (statique — axe/Lighthouse à passer en complément) :
+  - **Modals** : focus déplacé dans le dialogue à l'ouverture, **piège de focus**
+    Tab/Shift+Tab, **arrière-plan `inert`** (non focusable + masqué aux lecteurs
+    d'écran), **retour focus** au déclencheur à la fermeture (Escape/scrim/bouton).
+  - **Badges de ligne** : couleur de texte choisie par **luminance**
+    (`readableTextColor`) au lieu de `#111` en dur → fini le texte illisible sur
+    une couleur de ligne foncée (board + carte).
+  - **Structure** : `<h1>` (visually-hidden) ajouté sur board + carte ; utilitaire
+    `.visually-hidden` dans `app.css`.
+  - **Recherche** : input passé en `role="combobox"` + `aria-expanded` togglé,
+    `aria-controls`, `aria-autocomplete` (les options avaient déjà `role="option"`).
+  - *Déjà OK avant audit* : `prefers-reduced-motion` complet, focus-visible avec
+    alternatives visibles, clavier sur les cartes, aria-label des boutons-icônes.
+  - ✅ **Contraste `--ink-faint`** : #5e574e (~2,6:1) → **#8b8275** (≥4,5:1 sur
+    bg/elev/elev-2), appliqué dans board.css + map.css. C'est le taupe le plus
+    discret qui passe AA tout en restant distinct de `--ink-dim`.
+- [ ] 🟡 **Report d'erreurs côté client** — le front est en vanilla JS ; une
+  exception ou un écran d'erreur en prod est aujourd'hui **invisible** (Monolog ne
+  voit que le PHP serveur). Vu la posture « zéro traceur / RGPD » du projet,
+  privilégier une **balise maison** (`window.onerror` + `unhandledrejection` →
+  `POST /api/client-error` loggé via Monolog) plutôt que Sentry SaaS. Alternative
+  intermédiaire auto-hébergeable : **GlitchTip** (compatible SDK Sentry).
 - [ ] 🟡 **i18n (EN)** — tout est en français codé en dur ; plafonne l'audience
   (touristes). Optionnel selon l'ambition.
 </content>

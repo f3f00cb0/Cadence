@@ -178,11 +178,25 @@ function passesLayerFilter(area) {
     return false;
 }
 
+/* Black or white text for a chip background, by luminance — used when the feed
+   gives a route color but no explicit text color (avoids unreadable pairings). */
+function readableTextColor(hex) {
+    const m = String(hex).replace('#', '');
+    if (m.length < 6) return '#111';
+    const [r, g, b] = [0, 2, 4].map((i) => parseInt(m.slice(i, i + 2), 16));
+    const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; };
+    const L = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    return L > 0.45 ? '#111' : '#fff';
+}
+
 /** Inline style overriding chip colors with GTFS route color/text_color when present. */
 function gtfsColorStyle(route) {
     const parts = [];
-    if (route.color)      parts.push(`background:#${route.color}`);
-    if (route.text_color) parts.push(`color:#${route.text_color}`);
+    if (route.color) {
+        parts.push(`background:#${route.color}`);
+        // Respect the agency's text color if given, otherwise pick a readable one.
+        parts.push(`color:${route.text_color ? '#' + route.text_color : readableTextColor('#' + route.color)}`);
+    }
     return parts.length ? ` style="${parts.join(';')}"` : '';
 }
 

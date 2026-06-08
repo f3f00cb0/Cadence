@@ -18,7 +18,7 @@
     --ink:          #f2efe8;
     --ink-bright:   #ffffff;
     --ink-dim:      #93897c;
-    --ink-faint:    #5e574e;
+    --ink-faint:    #8b8275;   /* AA ≥4.5:1 sur bg/elev/elev-2 (ex-#5e574e ~2.6:1) */
 
     /* identité Saint-Étienne — accent / sélection uniquement */
     --asse:         #00733f;
