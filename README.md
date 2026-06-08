@@ -1,7 +1,8 @@
-# Mobilité Stéphanoise
+# Furan
 
 > Backend Symfony 7 + frontend Leaflet pour visualiser en temps réel le réseau
 > STAS (bus/tram) et les stations Vélivert à Saint-Étienne.
+> En ligne : https://furan.run/
 >
 > Source de données : open data Saint-Étienne Métropole (GTFS + GBFS).
 

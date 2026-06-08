@@ -1,5 +1,5 @@
 /* ============================================================
-   Mobilité Stéphanoise — board mode controller
+   Furan — board mode controller
    vanilla ES module — no framework
    ============================================================ */
 
@@ -147,10 +147,13 @@ function updateSyncLabel() {
                   : `${Math.floor(ago / 60)} MIN`;
 }
 
-/* ---------- Data fetchers ---------- */
+/* ---------- Data fetchers ----------
+   Ces helpers LÈVENT en cas d'échec réseau/HTTP (au lieu de renvoyer un tableau
+   vide silencieux) : les fonctions de rendu peuvent ainsi distinguer « aucune
+   donnée » d'« impossible de joindre le serveur » et afficher le bon état. */
 async function fetchNearbyAreas(lat, lon) {
     const res = await fetch(`/api/areas/nearby?lat=${lat}&lon=${lon}&limit=3&radius=2000`);
-    if (!res.ok) return [];
+    if (!res.ok) throw new Error(`areas/nearby → HTTP ${res.status}`);
     const { results } = await res.json();
     return results;
 }
@@ -162,14 +165,14 @@ async function fetchBatchDepartures(ids) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids, window: 50, limit: 4 }),
     });
-    if (!res.ok) return {};
+    if (!res.ok) throw new Error(`areas/batch-departures → HTTP ${res.status}`);
     const { results } = await res.json();
     return results;
 }
 
 async function fetchNearbyVelivert(lat, lon) {
     const res = await fetch(`/api/velivert/nearby?lat=${lat}&lon=${lon}&limit=4&radius=3000`);
-    if (!res.ok) return [];
+    if (!res.ok) throw new Error(`velivert/nearby → HTTP ${res.status}`);
     const { results } = await res.json();
     return results;
 }
@@ -303,6 +306,29 @@ function buildAreaCard(area, departures, opts = {}) {
     return node;
 }
 
+/* Renders an explicit "can't reach the server" state with a retry button.
+   Distinct from the genuine "no data" empty state so users don't mistake a
+   flaky connection (common at a bus stop) for "there are no stops". */
+function renderErrorState(container, onRetry, opts = {}) {
+    container.innerHTML = '';
+    const box = document.createElement('div');
+    box.className = 'empty empty--error';
+    const title = document.createElement('p');
+    title.className = 'empty__title';
+    title.textContent = opts.title ?? 'Connexion impossible';
+    const sub = document.createElement('p');
+    sub.className = 'empty__sub';
+    sub.textContent = opts.sub ?? 'Impossible de joindre le serveur. Vérifiez votre connexion.';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'empty__retry';
+    btn.textContent = 'Réessayer';
+    btn.addEventListener('click', () => onRetry());
+    box.append(title, sub, btn);
+    container.appendChild(box);
+}
+
+/** @returns {Promise<boolean>} true if the section refreshed, false on network failure. */
 async function renderNearby() {
     const section = $('bd-nearby-section');
     const cards = $('bd-nearby-cards');
@@ -311,7 +337,17 @@ async function renderNearby() {
     const position = state.position;
     section.dataset.source = position.source;
 
-    const areas = await fetchNearbyAreas(position.lat, position.lon);
+    let areas;
+    let byId;
+    try {
+        areas = await fetchNearbyAreas(position.lat, position.lon);
+        byId = await fetchBatchDepartures(areas.map(a => a.id));
+    } catch {
+        chip.innerHTML = '<span class="section__meta-pin">⊙</span> —';
+        renderErrorState(cards, renderNearby);
+        return false;
+    }
+
     state.nearbyAreas = areas;
     if (areas.length === 0) {
         cards.innerHTML = `
@@ -320,18 +356,19 @@ async function renderNearby() {
                 <p class="empty__sub">Aucun quai dans un rayon de 2 km.</p>
             </div>`;
         chip.innerHTML = '<span class="section__meta-pin">⊙</span> —';
-        return;
+        return true;
     }
     chip.innerHTML = `<span class="section__meta-pin">⊙</span> ${formatDistance(areas[0].distance_m)}`;
 
-    const byId = await fetchBatchDepartures(areas.map(a => a.id));
     cards.innerHTML = '';
     for (const area of areas) {
         const deps = byId[area.id]?.departures ?? [];
         cards.appendChild(buildAreaCard(area, deps, { distance: area.distance_m }));
     }
+    return true;
 }
 
+/** @returns {Promise<boolean>} true if departures refreshed, false on network failure. */
 async function renderFavorites() {
     const cards = $('bd-favorites-cards');
     const countEl = $('bd-favorites-count');
@@ -345,10 +382,20 @@ async function renderFavorites() {
                 <p class="empty__sub">Épinglez vos arrêts depuis l'icône <span class="empty__kbd">★</span> dans le détail.</p>
             </div>`;
         renderChips();
-        return;
+        return true;
     }
     const ids = state.favorites.map(f => f.areaId);
-    const byId = await fetchBatchDepartures(ids);
+
+    // Favorites live in localStorage, so even with no network we can still show
+    // the pinned stops (just without fresh departures) rather than wiping them.
+    let byId = {};
+    let offline = false;
+    try {
+        byId = await fetchBatchDepartures(ids);
+    } catch {
+        offline = true;
+    }
+
     cards.innerHTML = '';
     for (const fav of state.favorites) {
         const info = byId[fav.areaId];
@@ -356,11 +403,16 @@ async function renderFavorites() {
         const distance = state.position
             ? Math.round(haversine(state.position.lat, state.position.lon, area.lat, area.lon))
             : null;
-        cards.appendChild(buildAreaCard(area, info?.departures ?? [], { distance }));
+        cards.appendChild(buildAreaCard(area, info?.departures ?? [], {
+            distance,
+            extra: offline ? 'hors-ligne' : undefined,
+        }));
     }
     renderChips();
+    return !offline;
 }
 
+/** @returns {Promise<boolean>} true if the section refreshed, false on network failure. */
 async function renderVelivert() {
     const list = $('bd-velivert-list');
     const chip = $('bd-velivert-chip');
@@ -371,10 +423,17 @@ async function renderVelivert() {
                 <p class="empty__sub">Activez Vélivert dans les réglages.</p>
             </div>`;
         chip.textContent = '—';
-        return;
+        return true;
     }
     const pos = state.position;
-    const stations = await fetchNearbyVelivert(pos.lat, pos.lon);
+    let stations;
+    try {
+        stations = await fetchNearbyVelivert(pos.lat, pos.lon);
+    } catch {
+        chip.textContent = '—';
+        renderErrorState(list, renderVelivert);
+        return false;
+    }
     if (stations.length === 0) {
         list.innerHTML = `
             <div class="empty">
@@ -382,7 +441,7 @@ async function renderVelivert() {
                 <p class="empty__sub">Aucune station Vélivert dans un rayon de 3 km.</p>
             </div>`;
         chip.textContent = '0';
-        return;
+        return true;
     }
     chip.textContent = `${stations.length} STATIONS · ${formatDistance(stations[0].distance_m)}`;
 
@@ -411,6 +470,7 @@ async function renderVelivert() {
     }
     list.innerHTML = '';
     list.appendChild(wrap);
+    return true;
 }
 
 /* ---------- Chips (favoris + suggestions) ---------- */
@@ -791,8 +851,14 @@ function initPullToRefresh() {
 /* ---------- Refresh wiring ---------- */
 async function refreshAll() {
     try {
-        await Promise.all([renderNearby(), renderFavorites(), renderVelivert()]);
-        state.lastSync = Date.now();
+        // Each renderer handles its own errors and reports success, so one dead
+        // section doesn't take the others down. Only stamp lastSync when at least
+        // one section actually refreshed — otherwise the header would falsely
+        // claim "TEMPS RÉEL" while offline.
+        const results = await Promise.all([renderNearby(), renderFavorites(), renderVelivert()]);
+        if (results.some(ok => ok)) {
+            state.lastSync = Date.now();
+        }
     } finally {
         updateGeoCtaVisibility();
         updateSyncLabel();

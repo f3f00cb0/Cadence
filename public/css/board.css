@@ -808,6 +808,40 @@ body {
     margin: 0 2px;
 }
 
+/* Network-error variant: solid danger-tinted border + retry action, so a flaky
+   connection reads clearly as "couldn't load" rather than "nothing here". */
+.empty--error {
+    border-style: solid;
+    border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+}
+
+.empty--error .empty__title {
+    color: var(--danger);
+}
+
+.empty__retry {
+    margin-top: 14px;
+    appearance: none;
+    cursor: pointer;
+    background: var(--bg-elev-2);
+    color: var(--ink);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 8px 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.empty__retry:hover,
+.empty__retry:focus-visible {
+    color: var(--ink-bright);
+    border-color: var(--danger);
+}
+
 /* ============================================================
    Footer
    ============================================================ */

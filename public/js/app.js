@@ -1,5 +1,5 @@
 /* ============================================================
-   Mobilité Stéphanoise — carte (front)
+   Furan — carte (front)
    Markers mode-aware (tram / bus / vélivert) + bottom sheet mobile.
    ============================================================ */
 

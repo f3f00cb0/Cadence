@@ -1,6 +1,6 @@
 {
-    "name": "mathieu-mont/mobilite-stephanoise",
-    "description": "Mobilité Saint-Étienne — STAS + Vélivert open data unified backend",
+    "name": "mathieu-mont/furan",
+    "description": "Furan — STAS + Vélivert open data unified backend (Saint-Étienne)",
     "type": "project",
     "license": "MIT",
     "require": {
