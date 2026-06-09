@@ -31,8 +31,6 @@ const state = {
         accuracyCircle: null,
         lastFix: null,         // { lat, lon, accuracy }
         watchId: null,
-        firstFixHandled: false,
-        userInteracted: false, // a-t-il pané/zoomé avant le 1er fix ?
     },
 };
 
@@ -373,6 +371,68 @@ function recenterOnUser({ zoom } = {}) {
     state.map.setView([fix.lat, fix.lon], z, { animate: true });
 }
 
+/* Message éphémère au-dessus de la carte — Safari iOS échoue souvent en silence,
+   on rend donc le refus / l'indisponibilité visibles. */
+function showGeoToast(text, ms = 6000) {
+    const el = document.getElementById('mp-toast');
+    if (!el) return;
+    el.textContent = text;
+    el.hidden = false;
+    clearTimeout(showGeoToast._t);
+    if (ms) showGeoToast._t = setTimeout(() => { el.hidden = true; }, ms);
+}
+
+function onGeoError(err) {
+    console.warn('[geo]', err.code, err.message);
+    setLocateBtnState('error');
+    if (err.code === err.PERMISSION_DENIED) {
+        showGeoToast('Position bloquée pour ce site. Touchez « aA » dans la barre d’adresse → Réglages du site web → Localisation → Autoriser, puis réessayez.', 9000);
+    } else if (err.code === err.TIMEOUT) {
+        showGeoToast('Position introuvable (signal GPS faible). Réessayez, idéalement en extérieur.');
+    } else {
+        showGeoToast('Position indisponible pour le moment. Réessayez.');
+    }
+}
+
+/* Suivi continu — démarré seulement APRÈS un premier fix accordé. On ne le lance
+   jamais au chargement : Safari iOS ignore en silence toute demande de géoloc qui
+   ne provient pas d'un geste utilisateur (aucune pop-up n'apparaît). */
+function startWatch() {
+    if (state.user.watchId != null) return;
+    state.user.watchId = navigator.geolocation.watchPosition(
+        (pos) => {
+            const { latitude: lat, longitude: lon, accuracy } = pos.coords;
+            state.user.lastFix = { lat, lon, accuracy };
+            updateUserMarker(lat, lon, accuracy);   // suit l'utilisateur, sans recentrer
+        },
+        (err) => {
+            if (err.code === err.PERMISSION_DENIED && state.user.watchId != null) {
+                navigator.geolocation.clearWatch(state.user.watchId);
+                state.user.watchId = null;
+            }
+        },
+        { enableHighAccuracy: true, maximumAge: 15_000, timeout: 20_000 }
+    );
+}
+
+/* Demande ponctuelle — DOIT être appelée depuis un geste (tap) pour que Safari iOS
+   affiche la pop-up de permission dans un onglet normal. */
+function requestLocation() {
+    setLocateBtnState('seeking');
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            const { latitude: lat, longitude: lon, accuracy } = pos.coords;
+            state.user.lastFix = { lat, lon, accuracy };
+            updateUserMarker(lat, lon, accuracy);
+            setLocateBtnState('active');
+            state.map.setView([lat, lon], 16, { animate: true });
+            startWatch();   // le suivi live ne démarre qu'une fois la permission accordée
+        },
+        onGeoError,
+        { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 }
+    );
+}
+
 function initGeolocation() {
     const btn = document.getElementById('mp-locate-btn');
 
@@ -382,64 +442,16 @@ function initGeolocation() {
         return;
     }
 
-    // Si l'utilisateur pan/zoom avant le premier fix, on ne fera pas d'auto-zoom
-    state.map.on('dragstart', () => { state.user.userInteracted = true; });
-    state.map.on('zoomstart', (e) => {
-        // les zooms programmatiques (recenterOnUser) déclenchent aussi zoomstart,
-        // mais arrivent APRÈS firstFixHandled donc ce flag est sans effet à ce moment-là
-        if (state.user.firstFixHandled) return;
-        state.user.userInteracted = true;
-    });
+    // Pas de demande automatique au chargement (cf. requestLocation) : le bouton
+    // « me localiser » est le seul déclencheur, ce qui garantit la pop-up sur iOS.
+    setLocateBtnState('idle');
 
-    setLocateBtnState('seeking');
-
-    state.user.watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-            const { latitude: lat, longitude: lon, accuracy } = pos.coords;
-            state.user.lastFix = { lat, lon, accuracy };
-            updateUserMarker(lat, lon, accuracy);
-            setLocateBtnState('active');
-
-            if (!state.user.firstFixHandled) {
-                state.user.firstFixHandled = true;
-                if (!state.user.userInteracted) {
-                    state.map.setView([lat, lon], 16, { animate: true });
-                }
-            }
-        },
-        (err) => {
-            // Permission refusée ou position indisponible — on reste sur Saint-Étienne
-            console.warn('[geo]', err.message);
-            setLocateBtnState(err.code === err.PERMISSION_DENIED ? 'idle' : 'error');
-        },
-        {
-            enableHighAccuracy: true,
-            maximumAge: 15_000,
-            timeout: 20_000,
-        }
-    );
-
-    // Click → recentre sur la dernière position connue, ou relance une requête si rien
     btn?.addEventListener('click', () => {
         if (state.user.lastFix) {
             recenterOnUser();
             return;
         }
-        setLocateBtnState('seeking');
-        navigator.geolocation.getCurrentPosition(
-            (pos) => {
-                const { latitude: lat, longitude: lon, accuracy } = pos.coords;
-                state.user.lastFix = { lat, lon, accuracy };
-                updateUserMarker(lat, lon, accuracy);
-                setLocateBtnState('active');
-                state.map.setView([lat, lon], 16, { animate: true });
-            },
-            (err) => {
-                console.warn('[geo]', err.message);
-                setLocateBtnState(err.code === err.PERMISSION_DENIED ? 'idle' : 'error');
-            },
-            { enableHighAccuracy: true, timeout: 15_000 }
-        );
+        requestLocation();
     });
 }
 
