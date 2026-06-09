@@ -17,7 +17,7 @@
    Bumper CACHE_VERSION pour purger les anciens caches (sortie d'une MAJ).
    ============================================================ */
 
-const CACHE_VERSION = 'furan-v1';
+const CACHE_VERSION = 'furan-v2';
 const SHELL_CACHE   = `${CACHE_VERSION}-shell`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-runtime`;
 const API_CACHE     = `${CACHE_VERSION}-api`;
