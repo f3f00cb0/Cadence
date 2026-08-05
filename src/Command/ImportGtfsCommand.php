@@ -3,7 +3,6 @@
 namespace App\Command;
 
 use App\Service\Gtfs\GtfsImporter;
-use App\Service\Gtfs\StopAreaBuilder;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -20,7 +19,6 @@ final class ImportGtfsCommand extends Command
 {
     public function __construct(
         private readonly GtfsImporter $importer,
-        private readonly StopAreaBuilder $areaBuilder,
     ) {
         parent::__construct();
     }
@@ -35,12 +33,13 @@ final class ImportGtfsCommand extends Command
     {
         $io = new SymfonyStyle($input, $output);
         $url = $input->getArgument('url');
+        $regroup = !$input->getOption('no-group');
 
         $io->title('Import GTFS STAS');
         $start = microtime(true);
 
         try {
-            $stats = $this->importer->importFromUrl($url);
+            $stats = $this->importer->importFromUrl($url, $regroup);
         } catch (\Throwable $e) {
             $io->error($e->getMessage());
             return Command::FAILURE;
@@ -54,27 +53,10 @@ final class ImportGtfsCommand extends Command
             array_values($stats),
         ));
 
-        if (!$input->getOption('no-group')) {
-            $io->section('Grouping stops into stop areas');
-            $groupStart = microtime(true);
-            try {
-                $groupStats = $this->areaBuilder->rebuild();
-            } catch (\Throwable $e) {
-                $io->error('StopArea grouping failed: ' . $e->getMessage());
-                return Command::FAILURE;
-            }
-            $groupElapsed = round(microtime(true) - $groupStart, 1);
-            $io->definitionList(
-                ['areas created' => (string) $groupStats['areas']],
-                ['stops attached' => (string) $groupStats['stops']],
-                ['orphan stops' => (string) $groupStats['orphans']],
-                ['elapsed' => "{$groupElapsed}s"],
-            );
-            if ($groupStats['orphans'] > 0) {
-                $io->warning("{$groupStats['orphans']} orphan stop(s) not attached to any area.");
-            }
-        } else {
-            $io->note('Skipped StopArea grouping (--no-group). Run `app:gtfs:group-stops` manually.');
+        if (!$regroup) {
+            $io->warning('Skipped StopArea grouping (--no-group). /api/areas/* will serve no departures until `app:gtfs:group-stops` runs.');
+        } elseif (($stats['orphan_stops'] ?? 0) > 0) {
+            $io->warning("{$stats['orphan_stops']} orphan stop(s) not attached to any area.");
         }
 
         return Command::SUCCESS;

@@ -17,11 +17,16 @@ final class GtfsImporter
         private readonly Connection $db,
         private readonly LoggerInterface $logger,
         #[\SensitiveParameter] private readonly string $gtfsUrl,
+        private readonly StopAreaBuilder $areaBuilder,
         private readonly ?HttpClientInterface $httpClient = null,
     ) {
     }
 
-    public function importFromUrl(?string $url = null): array
+    /**
+     * @param bool $regroupAreas Leave true unless you intend to run
+     *                           app:gtfs:group-stops yourself — see importFromDirectory().
+     */
+    public function importFromUrl(?string $url = null, bool $regroupAreas = true): array
     {
         $url ??= $this->gtfsUrl;
         $this->logger->info('GTFS download starting', ['url' => $url]);
@@ -42,13 +47,25 @@ final class GtfsImporter
         @unlink($tmpZip);
 
         try {
-            return $this->importFromDirectory($extractDir);
+            return $this->importFromDirectory($extractDir, $regroupAreas);
         } finally {
             $this->cleanDir($extractDir);
         }
     }
 
-    public function importFromDirectory(string $dir): array
+    /**
+     * Truncating gtfs_stop nulls every Stop -> StopArea link, and every
+     * departures endpoint the app actually serves walks StopArea::getStops().
+     * So the regrouping pass is part of importing, not an optional follow-up:
+     * an import that skips it leaves the site answering "no departures" on
+     * every stop while areas, routes and GTFS-RT all still look healthy.
+     * That is why it lives here rather than in each caller — a caller that
+     * forgets it silently breaks production.
+     *
+     * @param bool $regroupAreas Opt out only for staged imports where you run
+     *                           app:gtfs:group-stops yourself before serving traffic.
+     */
+    public function importFromDirectory(string $dir, bool $regroupAreas = true): array
     {
         $stats = [];
         $this->db->executeStatement('SET session_replication_role = replica');
@@ -64,6 +81,19 @@ final class GtfsImporter
             $stats['stop_times']      = $this->importStopTimes("$dir/stop_times.txt");
         } finally {
             $this->db->executeStatement('SET session_replication_role = origin');
+        }
+
+        if ($regroupAreas) {
+            $areaStats = $this->areaBuilder->rebuild();
+            $stats['areas']          = $areaStats['areas'];
+            $stats['stops_attached'] = $areaStats['stops'];
+            $stats['orphan_stops']   = $areaStats['orphans'];
+
+            if ($areaStats['orphans'] > 0) {
+                $this->logger->warning('GTFS import left orphan stops', ['orphans' => $areaStats['orphans']]);
+            }
+        } else {
+            $this->logger->warning('GTFS import skipped StopArea regrouping — /api/areas/* will return no departures until app:gtfs:group-stops runs');
         }
 
         $this->logger->info('GTFS import done', $stats);

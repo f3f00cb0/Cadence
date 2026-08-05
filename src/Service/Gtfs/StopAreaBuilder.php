@@ -31,9 +31,22 @@ final class StopAreaBuilder
     }
 
     /**
+     * The whole swap runs in one transaction. Two reasons: readers never
+     * observe the window between the DELETE and the re-insert (which would
+     * serve an empty map), and a failure part-way can no longer leave the
+     * table emptied — strictly worse than the stale grouping it replaces.
+     *
      * @return array{areas: int, stops: int, orphans: int}
      */
     public function rebuild(): array
+    {
+        return $this->db->transactional(fn () => $this->doRebuild());
+    }
+
+    /**
+     * @return array{areas: int, stops: int, orphans: int}
+     */
+    private function doRebuild(): array
     {
         $this->truncate();
 

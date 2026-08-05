@@ -27,6 +27,31 @@ class StopRepository extends ServiceEntityRepository
             ->getResult();
     }
 
+    /** Quays only — parent stations (location_type 1) never carry departures. */
+    public function countQuays(): int
+    {
+        return (int) $this->createQueryBuilder('s')
+            ->select('COUNT(s.id)')
+            ->where('s.locationType IS NULL OR s.locationType = 0')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
+    /**
+     * Quays attached to no StopArea. Anything above zero means an import ran
+     * without StopAreaBuilder::rebuild() behind it, which silently empties
+     * every /api/areas/* departures response.
+     */
+    public function countOrphanQuays(): int
+    {
+        return (int) $this->createQueryBuilder('s')
+            ->select('COUNT(s.id)')
+            ->where('s.locationType IS NULL OR s.locationType = 0')
+            ->andWhere('s.area IS NULL')
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+
     /**
      * Bounding-box search (degrees). Cheap, no PostGIS required.
      * @return Stop[]
